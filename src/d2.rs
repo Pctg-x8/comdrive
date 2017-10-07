@@ -113,7 +113,7 @@ pub trait RenderTarget
     /// 描画開始
     fn begin_draw(&self) -> &Self { unsafe { (*self.as_rt_handle()).BeginDraw() }; self }
     /// 描画終了
-    fn wnd_draw(&self) -> IOResult<()> { unsafe { (*self.as_rt_handle()).EndDraw(null_mut(), null_mut()) }.checked() }
+    fn end_draw(&self) -> IOResult<()> { unsafe { (*self.as_rt_handle()).EndDraw(null_mut(), null_mut()) }.checked() }
     /// クリップ範囲の設定
     fn push_aa_clip<R: AsRef<D2D1_RECT_F>>(&self, rect: &R, aliasing: AntialiasMode) -> &Self
     {
