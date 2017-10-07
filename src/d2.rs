@@ -5,6 +5,8 @@ use winapi::um::d2d1::*;
 use winapi::um::d2d1_1::*;
 use winapi::um::d2d1effects::*;
 use winapi::um::dcommon::*;
+use winapi::shared::dxgiformat::DXGI_FORMAT_UNKNOWN;
+use std::ptr::{null, null_mut};
 use metrics::*;
 
 pub use winapi::um::d2d1::D2D1_COLOR_F as ColorF;
@@ -68,14 +70,13 @@ impl Factory
             dpiX: 0.0, dpiY: 0.0, usage: D2D1_RENDER_TARGET_USAGE_NONE,
             minLevel: D2D1_FEATURE_LEVEL_DEFAULT
         };
-        let hwrtprops = D2D1_HWND_RENDER_TARGET_PROEPRTIES
+        let hwrtprops = D2D1_HWND_RENDER_TARGET_PROPERTIES
         {
             hwnd: target, pixelSize: D2D1_SIZE_U { width: 0, height: 0 },
             presentOptions: D2D1_PRESENT_OPTIONS_NONE
         };
         let mut handle = std::ptr::null_mut();
-        unsafe { (*self.0).CreateHwndRenderTarget(&rtprops, &hwrtprops, &mut handle) }
-            .to_result_with(|| unsafe { HwndRenderTarget(handle) })
+        unsafe { (*self.0).CreateHwndRenderTarget(&rtprops, &hwrtprops, &mut handle) }.to_result_with(|| HwndRenderTarget(handle))
     }
 }
 
@@ -102,46 +103,63 @@ impl Device
             .to_result_with(|| DeviceContext(handle))
     }
 }
-impl DeviceContext
+
+/// RenderTarget系の共通実装
+pub trait RenderTarget
 {
+    /// コンテキストハンドル
+    fn as_rt_handle(&self) -> *mut ID2D1RenderTarget;
+
     /// 描画開始
-    pub fn begin_draw(&self) -> &Self { unsafe { (*self.0).BeginDraw() }; self }
+    fn begin_draw(&self) -> &Self { unsafe { (*self.as_rt_handle()).BeginDraw() }; self }
     /// 描画終了
-    pub fn end_draw(&self) -> IOResult<()> { unsafe { (*self.0).EndDraw(std::ptr::null_mut(), std::ptr::null_mut()) }.checked() }
+    fn wnd_draw(&self) -> IOResult<()> { unsafe { (*self.as_rt_handle()).EndDraw(null_mut(), null_mut()) }.checked() }
     /// クリップ範囲の設定
-    pub fn push_aa_clip(&self, rect: &Rect2F, aliasing: AntialiasMode) -> &Self
+    fn push_aa_clip<R: AsRef<D2D1_RECT_F>>(&self, rect: &R, aliasing: AntialiasMode) -> &Self
     {
-        unsafe { (*self.0).PushAxisAlignedClip(transmute_safe(rect), aliasing as _) }; self
+        unsafe { (*self.as_rt_handle()).PushAxisAlignedClip(rect.as_ref(), aliasing as _) }; self
     }
     /// クリップ範囲を解除
-    pub fn pop_aa_clip(&self) -> &Self { unsafe { (*self.0).PopAxisAlignedClip() }; self }
-    /// Set Transform
-    pub fn set_transform<Matrix: AsRef<D2D1_MATRIX_3X2_F>>(&self, matrix: &Matrix)
+    fn pop_aa_clip(&self) -> &Self { unsafe { (*self.as_rt_handle()).PopAxisAlignedClip() }; self }
+    
+    /// トランスフォーム行列をセット
+    fn set_transform<Matrix: AsRef<D2D1_MATRIX_3X2_F>>(&self, matrix: &Matrix) -> &Self
     {
-        unsafe { (*self.0).SetTransform(matrix.as_ref()) }
+        unsafe { (*self.as_rt_handle()).SetTransform(matrix.as_ref()) }; self
     }
-    /// Clear Render Target
-    pub fn clear(&self, color: &ColorF) -> &Self
+    /// 描画ターゲットの中身を消去
+    fn clear(&self, color: &ColorF) -> &Self { unsafe { (*self.as_rt_handle()).Clear(color) }; self }
+
+    /// 矩形を塗りつぶし
+    fn fill_rect<R: AsRef<D2D1_RECT_F>, B: Brush + ?Sized>(&self, area: &R, brush: &B) -> &Self
     {
-        unsafe { (*self.0).Clear(color) }; self
+        unsafe { (*self.as_rt_handle()).FillRectangle(area.as_ref(), brush.as_raw_brush()) }; self
     }
-    /// Draw filled Rectangle
-    pub fn fill_rect<B: Brush + ?Sized>(&self, area: &Rect2F, brush: &B) -> &Self
+    /// 線を引く
+    fn draw_line<P1: AsRef<D2D1_POINT_2F>, P2: AsRef<D2D1_POINT_2F>, B: Brush + ?Sized>(&self, start: &P1, end: &P2, brush: &B) -> &Self
     {
-        unsafe { (*self.0).FillRectangle(transmute_safe(area), brush.as_raw_brush()) }; self
-    }
-    /// Draw layouted text
-    pub fn draw_text<B: Brush + ?Sized>(&self, p: D2D1_POINT_2F, layout: &dwrite::TextLayout, brush: &B) -> &Self
-    {
-        unsafe { (*self.0).DrawTextLayout(p, layout.as_raw_handle() as _, brush.as_raw_brush(), D2D1_DRAW_TEXT_OPTIONS_NONE) };
+        unsafe { (*self.as_rt_handle()).DrawLine(*start.as_ref(), *end.as_ref(), brush.as_raw_brush(), 1.0, null_mut()) };
         self
     }
-    /// Bitmapを描く
-    pub fn draw_bitmap(&self, bmp: &Bitmap, rect: &Rect2F) -> &Self
+    /// レイアウト済みテキストの描画
+    fn draw_text<P: AsRef<D2D1_POINT_2F>, B: Brush + ?Sized>(&self, p: &P, layout: &dwrite::TextLayout, brush: &B) -> &Self
     {
-        unsafe { (*self.0).DrawBitmap(bmp.0, transmute_safe(rect), 1.0, D2D1_INTERPOLATION_MODE_LINEAR, std::ptr::null(), std::ptr::null()) };
+        unsafe { (*self.as_rt_handle()).DrawTextLayout(*p.as_ref(), layout.as_raw_handle() as _, brush.as_raw_brush(), D2D1_DRAW_TEXT_OPTIONS_NONE) };
         self
     }
+
+    /// ビットマップを描く
+    fn draw_bitmap<R: AsRef<D2D1_RECT_F>>(&self, bmp: &Bitmap, rect: &R) -> &Self
+    {
+        unsafe { (*self.as_rt_handle()).DrawBitmap(bmp.0, rect.as_ref(), 1.0, D2D1_INTERPOLATION_MODE_LINEAR, null()) };
+        self
+    }
+}
+
+impl RenderTarget for HwndRenderTarget { fn as_rt_handle(&self) -> *mut ID2D1RenderTarget { self.0 as _ } }
+impl RenderTarget for DeviceContext { fn as_rt_handle(&self) -> *mut ID2D1RenderTarget { self.0 as _ } }
+impl DeviceContext
+{
     /// Imageを描く
     pub fn draw<IMG: Image>(&self, offs: Point2F, image: &IMG) -> &Self
     {
@@ -152,12 +170,6 @@ impl DeviceContext
     pub fn draw_effected<E: Effect>(&self, offs: Point2F, fx: &E) -> &Self
     {
         self.draw(offs, &fx.get_output())
-    }
-    /// 線を引く
-    pub fn draw_line<B: Brush + ?Sized>(&self, start: Point2F, end: Point2F, brush: &B) -> &Self
-    {
-        unsafe { (*self.0).DrawLine(*transmute_safe(&start), *transmute_safe(&end), brush.as_raw_brush(), 1.0, std::ptr::null_mut()) };
-        self
     }
 }
 /// Driver object for ID2D1Bitmap(Context bound object)
