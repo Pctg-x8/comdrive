@@ -14,6 +14,22 @@ pub enum AntialiasMode
     Aliased = D2D1_ANTIALIAS_MODE_ALIASED as _, PerPrimitive = D2D1_ANTIALIAS_MODE_PER_PRIMITIVE as _
 }
 
+/// Driver object for ID2D1Factory
+pub struct Factory(*mut ID2D1Factory);
+impl Factory
+{
+    /// Create
+    pub fn new(mt: bool) -> IOResult<Self>
+    {
+        let mut handle = std::ptr::null_mut();
+        unsafe
+        {
+            D2D1CreateFactory(if mt { D2D1_FACTORY_TYPE_MULTI_THREADED } else { D2D1_FACTORY_TYPE_SINGLE_THREADED },
+                &ID2D1Factory::uuidof(), std::ptr::null(), &mut handle)
+        }.to_result_with(|| Factory(handle as _))
+    }
+}
+
 /// Driver object for ID2D1Device
 pub struct Device(*mut ID2D1Device);
 impl AsIUnknown for Device { fn as_iunknown(&self) -> *mut IUnknown { self.0 as _ } }
