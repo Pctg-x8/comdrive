@@ -8,6 +8,7 @@ use winapi::um::dcommon::*;
 use winapi::shared::dxgiformat::DXGI_FORMAT_UNKNOWN;
 use std::ptr::{null, null_mut};
 use metrics::*;
+use std::convert::AsRef;
 
 pub use winapi::um::d2d1::D2D1_COLOR_F as ColorF;
 #[repr(C)] #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -131,9 +132,9 @@ pub trait RenderTarget
     fn clear(&self, color: &ColorF) -> &Self { unsafe { (*self.as_rt_handle()).Clear(color) }; self }
 
     /// 矩形を塗りつぶし
-    fn fill_rect<R: AsRef<D2D1_RECT_F>, B: Brush + ?Sized>(&self, area: &R, brush: &B) -> &Self
+    fn fill_rect<B: Brush + ?Sized>(&self, area: &Rect2F, brush: &B) -> &Self
     {
-        unsafe { (*self.as_rt_handle()).FillRectangle(area.as_ref(), brush.as_raw_brush()) }; self
+        unsafe { (*self.as_rt_handle()).FillRectangle(transmute_safe(area), brush.as_raw_brush()) }; self
     }
     /// 線を引く
     fn draw_line<P1: AsRef<D2D1_POINT_2F>, P2: AsRef<D2D1_POINT_2F>, B: Brush + ?Sized>(&self, start: &P1, end: &P2, brush: &B) -> &Self
