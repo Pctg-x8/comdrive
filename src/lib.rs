@@ -52,8 +52,8 @@ macro_rules! AutoRemover
             {
                 if let Some(p) = unsafe { self.0.as_mut() }
                 {
-                    let rc = unsafe { p.Release() };
-                    println!("Dropping {}({}) outstanding refcount: {}", stringify!($t), stringify!($ti), rc);
+                    /*let rc = */unsafe { p.Release() };
+                    // println!("Dropping {}({}) outstanding refcount: {}", stringify!($t), stringify!($ti), rc);
                     self.0 = std::ptr::null_mut();
                 }
             }
@@ -72,8 +72,8 @@ impl<T> Drop for ComPtr<T>
     {
         if let Some(p) = unsafe { self.0.as_mut() }
         {
-            let rc = unsafe { std::mem::transmute::<_, &mut IUnknown>(p).Release() };
-            println!("Dropping ComPtr outstanding refcount: {}", rc);
+            /*let rc = */unsafe { std::mem::transmute::<_, &mut IUnknown>(p).Release() };
+            // println!("Dropping ComPtr outstanding refcount: {}", rc);
             self.0 = std::ptr::null_mut();
         }
     }

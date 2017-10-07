@@ -6,7 +6,6 @@ use winapi::shared::dxgi::*;
 use winapi::shared::dxgi1_2::*;
 use winapi::shared::dxgi1_3::DXGI_CREATE_FACTORY_DEBUG;
 use winapi::shared::dxgi1_4::*;
-use winapi::shared::dxgiformat::*;
 use winapi::shared::dxgitype::*;
 use winapi::um::libloaderapi::{LoadLibraryA, FreeLibrary, GetProcAddress};
 use winapi::shared::minwindef::{ULONG};
@@ -116,12 +115,12 @@ impl Drop for Debug
 }
 
 /// スワップチェーン
-pub struct SwapChain(*mut IDXGISwapChain3, DXGI_FORMAT, usize);
+pub struct SwapChain(*mut IDXGISwapChain3, Format, usize);
 impl Factory
 {
     /// スワップチェーンの作成
     pub fn new_swapchain<RenderDevice: AsIUnknown>(&self, rendering_device: &RenderDevice, init_size: Size2U,
-        format: DXGI_FORMAT, alpha_mode: AlphaMode, buffer_count: usize) -> IOResult<SwapChain>
+        format: Format, alpha_mode: AlphaMode, buffer_count: usize) -> IOResult<SwapChain>
     {
         let desc = DXGI_SWAP_CHAIN_DESC1
         {
