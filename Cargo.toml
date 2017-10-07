@@ -1,0 +1,18 @@
+[package]
+name = "comdrive"
+version = "0.1.0"
+authors = ["S.Percentage"]
+description = "COM Object Driver and Definitions for Rust"
+
+[dependencies]
+widestring = "0.2"
+metrics = { path = "../metrics" }
+
+[dependencies.winapi]
+git = "https://github.com/retep998/winapi-rs"
+branch = "dev"
+features = [
+    "dxgi", "d3d12", "d3d11", "d2d1", "d2d1_1", "dcomp", "d3d11on12", "d3dcompiler",
+    "wincodec", "dcompanimation", "objbase", "minwinbase", "d3d12sdklayers",
+    "dwrite", "dwmapi", "winuser", "winbase", "dwrite_1", "dxgi1_3", "dxgi1_4"
+]
