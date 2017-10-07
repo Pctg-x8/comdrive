@@ -50,6 +50,23 @@ pub trait DeviceChild { fn parent(&self) -> IOResult<Device>; }
 impl DeviceChild for Device { fn parent(&self) -> IOResult<Device> { Ok(self.clone()) } }
 pub trait SurfaceChild { fn base(&self) -> IOResult<Surface>; }
 impl SurfaceChild for Surface { fn base(&self) -> IOResult<Surface> { Ok(self.clone()) } }
+impl Device
+{
+    pub fn adapter(&self) -> IOResult<Adapter>
+    {
+        let mut a = std::ptr::null_mut();
+        unsafe { (*self.0).GetAdapter(&mut a) }.to_result_with(|| Adapter(a))
+    }
+}
+impl Adapter
+{
+    pub fn parent<H: Handle>(&self) -> IOResult<H> where H: FromRawHandle<<H as Handle>::RawType>
+    {
+        let mut h = std::ptr::null_mut();
+        unsafe { (*self.0).GetParent(&<H as Handle>::RawType::uuidof(), &mut h) }
+            .to_result_with(|| unsafe { H::from_raw_handle(h as _) })
+    }
+}
 
 #[allow(non_camel_case_types)] pub type DXGI_DEBUG_RLO_FLAGS = u8;
 #[allow(dead_code)] const DXGI_DEBUG_RLO_SUMMARY: DXGI_DEBUG_RLO_FLAGS = 0x01;
