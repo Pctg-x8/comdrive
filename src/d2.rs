@@ -39,6 +39,30 @@ impl Device
 /// Transparent Color
 pub const TRANSPARENT_COLOR: ColorF = ColorF { r: 0.0, g: 0.0, b: 0.0, a: 0.0 };
 
+/// Driver object for ID2D1HwndRenderTarget
+pub struct HwndRenderTarget(*mut ID2D1HwndRenderTarget);
+impl Factory
+{
+    pub fn new_hwnd_render_target(&self, target: HWND) -> IOResult<HwndRenderTarget>
+    {
+        let rtprops = D2D1_RENDER_TARGET_PROPERTIES
+        {
+            _type: D2D1_RENDER_TARGET_TYPE_DEFAULT,
+            pixelFormat: D2D1_PIXEL_FORMAT { format: DXGI_FORMAT_UNKNOWN, alphaMode: D2D1_ALPHA_MODE_UNKNOWN },
+            dpiX: 0.0, dpiY: 0.0, usage: D2D1_RENDER_TARGET_USAGE_NONE,
+            minLevel: D2D1_FEATURE_LEVEL_DEFAULT
+        };
+        let hwrtprops = D2D1_HWND_RENDER_TARGET_PROEPRTIES
+        {
+            hwnd: target, pixelSize: D2D1_SIZE_U { width: 0, height: 0 },
+            presentOptions: D2D1_PRESENT_OPTIONS_NONE
+        };
+        let mut handle = std::ptr::null_mut();
+        unsafe { (*self.0).CreateHwndRenderTarget(&rtprops, &hwrtprops, &mut handle) }
+            .to_result_with(|| unsafe { HwndRenderTarget(handle) })
+    }
+}
+
 /// Driver object for ID2D1DeviceContext
 pub struct DeviceContext(*mut ID2D1DeviceContext);
 impl Handle for DeviceContext
