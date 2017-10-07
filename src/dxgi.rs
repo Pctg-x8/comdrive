@@ -120,13 +120,14 @@ impl Factory
 {
     /// スワップチェーンの作成
     pub fn new_swapchain<RenderDevice: AsIUnknown>(&self, rendering_device: &RenderDevice, init_size: Size2U,
-        format: Format, alpha_mode: AlphaMode, buffer_count: usize) -> IOResult<SwapChain>
+        format: Format, alpha_mode: AlphaMode, buffer_count: usize, use_sequential: bool) -> IOResult<SwapChain>
     {
         let desc = DXGI_SWAP_CHAIN_DESC1
         {
             BufferCount: buffer_count as _, BufferUsage: DXGI_USAGE_RENDER_TARGET_OUTPUT,
             Format: format, AlphaMode: alpha_mode as _, Width: init_size.width(), Height: init_size.height(),
-            Stereo: false as _, SampleDesc: DXGI_SAMPLE_DESC { Count: 1, Quality: 0 }, SwapEffect: DXGI_SWAP_EFFECT_FLIP_DISCARD,
+            Stereo: false as _, SampleDesc: DXGI_SAMPLE_DESC { Count: 1, Quality: 0 },
+            SwapEffect: if use_sequential { DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL } else { DXGI_SWAP_EFFECT_FLIP_DISCARD },
             Scaling: DXGI_SCALING_STRETCH, Flags: 0
         };
         let mut handle = std::ptr::null_mut();
