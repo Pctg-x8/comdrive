@@ -6,7 +6,7 @@ description = "COM Object Driver and Definitions for Rust"
 
 [dependencies]
 widestring = "0.2"
-metrics = { git = "https://github.com/Pctg-x8/metrics" }
+metrics = { path = "../metrics" }
 
 [dependencies.winapi]
 git = "https://github.com/retep998/winapi-rs"

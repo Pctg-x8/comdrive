@@ -116,9 +116,9 @@ pub trait RenderTarget
     /// 描画終了
     fn end_draw(&self) -> IOResult<()> { unsafe { (*self.as_rt_handle()).EndDraw(null_mut(), null_mut()) }.checked() }
     /// クリップ範囲の設定
-    fn push_aa_clip<R: AsRef<D2D1_RECT_F>>(&self, rect: &R, aliasing: AntialiasMode) -> &Self
+    fn push_aa_clip(&self, rect: &Rect2F, aliasing: AntialiasMode) -> &Self
     {
-        unsafe { (*self.as_rt_handle()).PushAxisAlignedClip(rect.as_ref(), aliasing as _) }; self
+        unsafe { (*self.as_rt_handle()).PushAxisAlignedClip(transmute_safe(rect), aliasing as _) }; self
     }
     /// クリップ範囲を解除
     fn pop_aa_clip(&self) -> &Self { unsafe { (*self.as_rt_handle()).PopAxisAlignedClip() }; self }
@@ -137,22 +137,22 @@ pub trait RenderTarget
         unsafe { (*self.as_rt_handle()).FillRectangle(transmute_safe(area), brush.as_raw_brush()) }; self
     }
     /// 線を引く
-    fn draw_line<P1: AsRef<D2D1_POINT_2F>, P2: AsRef<D2D1_POINT_2F>, B: Brush + ?Sized>(&self, start: &P1, end: &P2, brush: &B) -> &Self
+    fn draw_line<B: Brush + ?Sized>(&self, start: Point2F, end: Point2F, brush: &B) -> &Self
     {
-        unsafe { (*self.as_rt_handle()).DrawLine(*start.as_ref(), *end.as_ref(), brush.as_raw_brush(), 1.0, null_mut()) };
+        unsafe { (*self.as_rt_handle()).DrawLine(*transmute_safe(&start), *transmute_safe(&end), brush.as_raw_brush(), 1.0, null_mut()) };
         self
     }
     /// レイアウト済みテキストの描画
-    fn draw_text<P: AsRef<D2D1_POINT_2F>, B: Brush + ?Sized>(&self, p: &P, layout: &dwrite::TextLayout, brush: &B) -> &Self
+    fn draw_text<B: Brush + ?Sized>(&self, p: Point2F, layout: &dwrite::TextLayout, brush: &B) -> &Self
     {
-        unsafe { (*self.as_rt_handle()).DrawTextLayout(*p.as_ref(), layout.as_raw_handle() as _, brush.as_raw_brush(), D2D1_DRAW_TEXT_OPTIONS_NONE) };
+        unsafe { (*self.as_rt_handle()).DrawTextLayout(*transmute_safe(&p), layout.as_raw_handle() as _, brush.as_raw_brush(), D2D1_DRAW_TEXT_OPTIONS_NONE) };
         self
     }
 
     /// ビットマップを描く
-    fn draw_bitmap<R: AsRef<D2D1_RECT_F>>(&self, bmp: &Bitmap, rect: &R) -> &Self
+    fn draw_bitmap(&self, bmp: &Bitmap, rect: &Rect2F) -> &Self
     {
-        unsafe { (*self.as_rt_handle()).DrawBitmap(bmp.0, rect.as_ref(), 1.0, D2D1_INTERPOLATION_MODE_LINEAR, null()) };
+        unsafe { (*self.as_rt_handle()).DrawBitmap(bmp.0, transmute_safe(rect), 1.0, D2D1_INTERPOLATION_MODE_LINEAR, null()) };
         self
     }
 }
