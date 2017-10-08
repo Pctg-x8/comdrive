@@ -50,7 +50,7 @@ impl Device
         let mut handle = std::ptr::null_mut();
         dev3.parent().and_then(|dx| unsafe
         {
-            D2D1CreateDevice(dx.as_raw_handle(), &cp, &mut handle)
+            D2D1CreateDevice(dx.as_raw_handle() as _, &cp, &mut handle)
         }.to_result_with(|| Device(handle)))
     }
 }

@@ -42,7 +42,7 @@ impl Factory
 /// Driver object for IDXGIAdapter
 pub struct Adapter(*mut IDXGIAdapter);
 /// Driver object for IDXGIDevice
-pub struct Device(*mut IDXGIDevice);
+pub struct Device(*mut IDXGIDevice1);
 /// Driver object for IDXGISurface
 pub struct Surface(*mut IDXGISurface);
 
@@ -57,6 +57,10 @@ impl Device
         let mut a = std::ptr::null_mut();
         unsafe { (*self.0).GetAdapter(&mut a) }.to_result_with(|| Adapter(a))
     }
+    pub fn set_maximum_frame_latency(&self, max_latency: u32) -> IOResult<()>
+    {
+        unsafe { (*self.0).SetMaximumFrameLatency(max_latency) }.checked()
+    }
 }
 impl Adapter
 {
@@ -65,6 +69,11 @@ impl Adapter
         let mut h = std::ptr::null_mut();
         unsafe { (*self.0).GetParent(&<H as Handle>::RawType::uuidof(), &mut h) }
             .to_result_with(|| unsafe { H::from_raw_handle(h as _) })
+    }
+    pub fn desc(&self) -> IOResult<DXGI_ADAPTER_DESC>
+    {
+        let mut s = unsafe { std::mem::uninitialized() };
+        unsafe { (*self.0).GetDesc(&mut s) }.to_result(s)
     }
 }
 
@@ -158,6 +167,28 @@ impl Factory
                 })
             })
     }
+    pub fn new_swapchain_for_hwnd<RenderDevice: AsIUnknown>(&self, render: &RenderDevice, target: HWND, init_size: Size2U,
+        format: Format, alpha_mode: AlphaMode, buffer_count: usize, use_sequential: bool) -> IOResult<SwapChain>
+    {
+        let desc = DXGI_SWAP_CHAIN_DESC1
+        {
+            BufferCount: buffer_count as _, BufferUsage: DXGI_USAGE_RENDER_TARGET_OUTPUT,
+            Format: format, AlphaMode: alpha_mode as _, Width: init_size.width(), Height: init_size.height(),
+            Stereo: false as _, SampleDesc: DXGI_SAMPLE_DESC { Count: 1, Quality: 0 },
+            SwapEffect: if use_sequential { DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL } else { DXGI_SWAP_EFFECT_FLIP_DISCARD },
+            Scaling: DXGI_SCALING_STRETCH, Flags: 0
+        };
+        let mut handle = std::ptr::null_mut();
+        unsafe { (*self.0).CreateSwapChainForHwnd(render.as_iunknown(), target, &desc, std::ptr::null(), std::ptr::null_mut(), &mut handle) }
+            .to_result(handle as *mut IDXGISwapChain1).and_then(|h|
+            {
+                let mut h3 = std::ptr::null_mut();
+                unsafe { (*h).QueryInterface(&IDXGISwapChain3::uuidof(), &mut h3) }.to_result_with(|| unsafe
+                {
+                    (*h).Release(); SwapChain(h3 as _, format, buffer_count)
+                })
+            })
+    }
 }
 impl SwapChain
 {
@@ -186,12 +217,12 @@ impl AsIUnknown for Surface { fn as_iunknown(&self) -> *mut IUnknown { self.0 as
 impl AsIUnknown for SwapChain { fn as_iunknown(&self) -> *mut IUnknown { self.0 as _ } }
 impl AsRawHandle<IDXGIFactory2> for Factory { fn as_raw_handle(&self) -> *mut IDXGIFactory2 { self.0 as _ } }
 impl AsRawHandle<IDXGIAdapter> for Adapter { fn as_raw_handle(&self) -> *mut IDXGIAdapter { self.0 as _ } }
-impl AsRawHandle<IDXGIDevice> for Device { fn as_raw_handle(&self) -> *mut IDXGIDevice { self.0 as _ } }
+impl AsRawHandle<IDXGIDevice1> for Device { fn as_raw_handle(&self) -> *mut IDXGIDevice1 { self.0 as _ } }
 impl AsRawHandle<IDXGISurface> for Surface { fn as_raw_handle(&self) -> *mut IDXGISurface { self.0 as _ } }
 impl AsRawHandle<IDXGISwapChain3> for SwapChain { fn as_raw_handle(&self) -> *mut IDXGISwapChain3 { self.0 as _ } }
 impl FromRawHandle<IDXGIFactory2> for Factory { unsafe fn from_raw_handle(h: *mut IDXGIFactory2) -> Self { Factory(h) } }
 impl FromRawHandle<IDXGIAdapter> for Adapter { unsafe fn from_raw_handle(h: *mut IDXGIAdapter) -> Self { Adapter(h) } }
-impl FromRawHandle<IDXGIDevice> for Device { unsafe fn from_raw_handle(h: *mut IDXGIDevice) -> Self { Device(h) } }
+impl FromRawHandle<IDXGIDevice1> for Device { unsafe fn from_raw_handle(h: *mut IDXGIDevice1) -> Self { Device(h) } }
 impl FromRawHandle<IDXGISurface> for Surface { unsafe fn from_raw_handle(h: *mut IDXGISurface) -> Self { Surface(h) } }
 impl Handle for Factory
 {
@@ -213,7 +244,7 @@ impl Handle for Adapter
 }
 impl Handle for Device
 {
-    type RawType = IDXGIDevice;
+    type RawType = IDXGIDevice1;
     fn query_interface<Q: Handle>(&self) -> IOResult<Q> where Q: FromRawHandle<<Q as Handle>::RawType>
     {
         let mut handle: *mut Q::RawType = std::ptr::null_mut();
