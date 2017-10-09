@@ -93,7 +93,7 @@ pub mod imaging;
 pub mod traits
 {
     pub use super::dcomp::{SurfaceFactoryProvider, TargetProvider, SurfaceFactory, Surface};
-    pub use super::d2::RenderTarget;
+    pub use super::d2::{RenderTarget, GeometrySegment};
     pub use super::{ResultCarrier, AsIUnknown, AsRawHandle, Handle};
 }
 pub use self::traits::*;

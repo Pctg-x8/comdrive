@@ -53,6 +53,11 @@ impl Device
             D2D1CreateDevice(dx.as_raw_handle() as _, &cp, &mut handle)
         }.to_result_with(|| Device(handle)))
     }
+    pub fn factory(&self) -> Factory
+    {
+        let mut p = std::ptr::null_mut();
+        unsafe { (*self.0).GetFactory(&mut p); } Factory(p)
+    }
 }
 
 /// Transparent Color
@@ -296,6 +301,85 @@ unsafe impl MarkForSameBits<D2D1_GRADIENT_STOP> for GradientStop {}
 pub enum Gamma { Linear = D2D1_GAMMA_1_0 as _, SRGB = D2D1_GAMMA_2_2 as _ }
 #[repr(C)] #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExtendMode { Clamp = D2D1_EXTEND_MODE_CLAMP as _, Wrap = D2D1_EXTEND_MODE_WRAP as _, Mirror = D2D1_EXTEND_MODE_MIRROR as _ }
+
+/// Driver class for ID2D1PathGeometry
+pub struct PathGeometry(*mut ID2D1PathGeometry);
+impl Factory
+{
+    pub fn new_path_geometry(&self) -> IOResult<PathGeometry>
+    {
+        let mut h = std::ptr::null_mut();
+        unsafe { (*self.0).CreatePathGeometry(&mut h) }.to_result_with(|| PathGeometry(h))
+    }
+}
+/// Driver class for ID2D1GeometrySink
+pub struct GeometrySink(*mut ID2D1GeometrySink);
+impl PathGeometry
+{
+    pub fn open(&self) -> IOResult<GeometrySink>
+    {
+        let mut h = std::ptr::null_mut();
+        unsafe { (*self.0).Open(&mut h) }.to_result_with(|| GeometrySink(h))
+    }
+}
+
+/// Geometry Segment
+pub trait GeometrySegment: Sized
+{
+    fn add_to(&self, sink: &GeometrySink);
+    fn add_multi(v: &[Self], sink: &GeometrySink);
+}
+impl GeometrySink
+{
+    pub fn begin_figure(&self, p: Point2F, fill: bool) -> &Self
+    {
+        let fb = if fill { D2D1_FIGURE_BEGIN_FILLED } else { D2D1_FIGURE_BEGIN_HOLLOW };
+        unsafe { (*self.0).BeginFigure(*transmute_safe(&p), fb) }; self
+    }
+    pub fn add<S: GeometrySegment>(&self, segment: &S) -> &Self
+    {
+        segment.add_to(self); self
+    }
+    pub fn end_figure(&self, close: bool) -> &Self
+    {
+        let fe = if close { D2D1_FIGURE_END_CLOSED } else { D2D1_FIGURE_END_OPEN };
+        unsafe { (*self.0).EndFigure(fe) }; self
+    }
+    pub fn close(&self) -> IOResult<()>
+    {
+        unsafe { (*self.0).Close() }.checked()
+    }
+}
+impl GeometrySegment for D2D1_ARC_SEGMENT
+{
+    fn add_to(&self, sink: &GeometrySink) { unsafe { (*sink.0).AddArc(self); } }
+    fn add_multi(_: &[Self], _: &GeometrySink) { unimplemented!(); }
+}
+impl GeometrySegment for D2D1_BEZIER_SEGMENT
+{
+    fn add_to(&self, sink: &GeometrySink) { unsafe { (*sink.0).AddBezier(self); } }
+    fn add_multi(v: &[Self], sink: &GeometrySink)
+    {
+        unsafe { (*sink.0).AddBeziers(v.as_ptr(), v.len() as _); }
+    }
+}
+/// Line
+impl GeometrySegment for D2D1_POINT_2F
+{
+    fn add_to(&self, sink: &GeometrySink) { unsafe { (*sink.0).AddLine(*self); } }
+    fn add_multi(v: &[Self], sink: &GeometrySink)
+    {
+        unsafe { (*sink.0).AddLines(v.as_ptr(), v.len() as _); }
+    }
+}
+impl GeometrySegment for D2D1_QUADRATIC_BEZIER_SEGMENT
+{
+    fn add_to(&self, sink: &GeometrySink) { unsafe { (*sink.0).AddQuadraticBezier(self); } }
+    fn add_multi(v: &[Self], sink: &GeometrySink)
+    {
+        unsafe { (*sink.0).AddQuadraticBeziers(v.as_ptr(), v.len() as _); }
+    }
+}
 
 /// Driver class for ID2D1GaussianBlurEffect
 pub struct GaussianBlurEffect(*mut ID2D1Effect);
