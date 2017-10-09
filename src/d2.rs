@@ -10,7 +10,7 @@ use std::ptr::{null, null_mut};
 use metrics::*;
 use std::convert::AsRef;
 
-pub use winapi::um::d2d1::D2D1_COLOR_F as ColorF;
+pub use winapi::um::d2d1::{D2D1_COLOR_F as ColorF, D2D1_SIZE_F as SizeF};
 #[repr(C)] #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AntialiasMode
 {
