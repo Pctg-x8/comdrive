@@ -354,6 +354,16 @@ pub use winapi::um::d2d1::{
     D2D1_POINT_2F as Point2F, D2D1_ARC_SEGMENT as ArcSegment,
     D2D1_BEZIER_SEGMENT as BezierSegment, D2D1_QUADRATIC_BEZIER_SEGMENT as QuadraticBezierSegment
 };
+#[repr(C)] #[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd, Ord)]
+pub enum SweepDirection
+{
+    CCW = D2D1_SWEEP_DIRECTION_COUNTER_CLOCKWISE as _, CW = D2D1_SWEEP_DIRECTION_CLOCKWISE as _
+}
+#[repr(C)] #[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd, Ord)]
+pub enum ArcSize
+{
+    Small = D2D1_ARC_SIZE_SMALL as _, Large = D2D1_ARC_SIZE_LARGE as _
+}
 impl GeometrySegment for D2D1_ARC_SEGMENT
 {
     fn add_to(&self, sink: &GeometrySink) { unsafe { (*sink.0).AddArc(self); } }
