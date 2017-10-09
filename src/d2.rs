@@ -142,13 +142,13 @@ pub trait RenderTarget
         unsafe { (*self.as_rt_handle()).FillRectangle(transmute_safe(area), brush.as_raw_brush()) }; self
     }
     /// 線を引く
-    fn draw_line<B: Brush + ?Sized>(&self, start: Point2F, end: Point2F, brush: &B) -> &Self
+    fn draw_line<B: Brush + ?Sized>(&self, start: metrics::Point2F, end: metrics::Point2F, brush: &B) -> &Self
     {
         unsafe { (*self.as_rt_handle()).DrawLine(*transmute_safe(&start), *transmute_safe(&end), brush.as_raw_brush(), 1.0, null_mut()) };
         self
     }
     /// レイアウト済みテキストの描画
-    fn draw_text<B: Brush + ?Sized>(&self, p: Point2F, layout: &dwrite::TextLayout, brush: &B) -> &Self
+    fn draw_text<B: Brush + ?Sized>(&self, p: metrics::Point2F, layout: &dwrite::TextLayout, brush: &B) -> &Self
     {
         unsafe { (*self.as_rt_handle()).DrawTextLayout(*transmute_safe(&p), layout.as_raw_handle() as _, brush.as_raw_brush(), D2D1_DRAW_TEXT_OPTIONS_NONE) };
         self
@@ -167,13 +167,13 @@ impl RenderTarget for DeviceContext { fn as_rt_handle(&self) -> *mut ID2D1Render
 impl DeviceContext
 {
     /// Imageを描く
-    pub fn draw<IMG: Image>(&self, offs: Point2F, image: &IMG) -> &Self
+    pub fn draw<IMG: Image>(&self, offs: metrics::Point2F, image: &IMG) -> &Self
     {
         unsafe { (*self.0).DrawImage(image.as_raw_image(), transmute_safe(&offs), std::ptr::null(), D2D1_INTERPOLATION_MODE_LINEAR, D2D1_COMPOSITE_MODE_SOURCE_OVER) };
         self
     }
     /// Effectを描く
-    pub fn draw_effected<E: Effect>(&self, offs: Point2F, fx: &E) -> &Self
+    pub fn draw_effected<E: Effect>(&self, offs: metrics::Point2F, fx: &E) -> &Self
     {
         self.draw(offs, &fx.get_output())
     }
@@ -256,7 +256,7 @@ impl DeviceContext
         unsafe { (*self.0).CreateSolidColorBrush(color, std::ptr::null(), &mut handle) }.to_result_with(|| SolidColorBrush(handle))
     }
     /// Create Linear Gradient Brush
-    pub fn new_linear_gradient_brush(&self, from: Point2F, to: Point2F, stops: &GradientStopCollection) -> IOResult<LinearGradientBrush>
+    pub fn new_linear_gradient_brush(&self, from: metrics::Point2F, to: metrics::Point2F, stops: &GradientStopCollection) -> IOResult<LinearGradientBrush>
     {
         let mut handle = std::ptr::null_mut();
         let lb_props = D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES
@@ -331,7 +331,7 @@ pub trait GeometrySegment: Sized
 }
 impl GeometrySink
 {
-    pub fn begin_figure(&self, p: Point2F, fill: bool) -> &Self
+    pub fn begin_figure(&self, p: metrics::Point2F, fill: bool) -> &Self
     {
         let fb = if fill { D2D1_FIGURE_BEGIN_FILLED } else { D2D1_FIGURE_BEGIN_HOLLOW };
         unsafe { (*self.0).BeginFigure(*transmute_safe(&p), fb) }; self
@@ -350,6 +350,10 @@ impl GeometrySink
         unsafe { (*self.0).Close() }.checked()
     }
 }
+pub use winapi::um::d2d1::{
+    D2D1_POINT_2F as Point2F, D2D1_ARC_SEGMENT as ArcSegment,
+    D2D1_BEZIER_SEGMENT as BezierSegment, D2D1_QUADRATIC_BEZIER_SEGMENT as QuadraticBezierSegment
+};
 impl GeometrySegment for D2D1_ARC_SEGMENT
 {
     fn add_to(&self, sink: &GeometrySink) { unsafe { (*sink.0).AddArc(self); } }
