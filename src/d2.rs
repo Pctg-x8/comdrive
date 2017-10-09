@@ -376,6 +376,15 @@ impl GeometrySegment for D2D1_POINT_2F
         unsafe { (*sink.0).AddLines(v.as_ptr(), v.len() as _); }
     }
 }
+/// Line
+impl GeometrySegment for metrics::Point2F
+{
+    fn add_to(&self, sink: &GeometrySink) { unsafe { (*sink.0).AddLine(*transmute_safe(self)); } }
+    fn add_multi(v: &[Self], sink: &GeometrySink)
+    {
+        unsafe { (*sink.0).AddLines(v.as_ptr() as _, v.len() as _); }
+    }
+}
 impl GeometrySegment for D2D1_QUADRATIC_BEZIER_SEGMENT
 {
     fn add_to(&self, sink: &GeometrySink) { unsafe { (*sink.0).AddQuadraticBezier(self); } }
