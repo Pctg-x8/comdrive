@@ -453,7 +453,8 @@ impl Effect for GaussianBlurEffect { fn as_raw_effect(&self) -> *mut ID2D1Effect
 
 AutoRemover!(for Device[ID2D1Device], DeviceContext[ID2D1DeviceContext], Bitmap[ID2D1Bitmap], Bitmap1[ID2D1Bitmap1]);
 AutoRemover!(for SolidColorBrush[ID2D1SolidColorBrush], LinearGradientBrush[ID2D1LinearGradientBrush], RadialGradientBrush[ID2D1RadialGradientBrush]);
-AutoRemover!(for GradientStopCollection[ID2D1GradientSTopCollection], ImageRef[ID2D1Image], GaussianBlurEffect[ID2D1GaussianBlurEffect]);
+AutoRemover!(for GradientStopCollection[ID2D1GradientStopCollection], ImageRef[ID2D1Image], GaussianBlurEffect[ID2D1GaussianBlurEffect]);
+AutoRemover!(for PathGeometry[ID2D1PathGeometry], GeometrySink[ID2D1GeometrySink]);
 
 /// Matrix 3x2
 pub struct Matrix3x2F(D2D1_MATRIX_3X2_F);
