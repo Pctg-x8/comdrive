@@ -451,7 +451,7 @@ pub trait Effect
 }
 impl Effect for GaussianBlurEffect { fn as_raw_effect(&self) -> *mut ID2D1Effect { self.0 } }
 
-AutoRemover!(for Device[ID2D1Device], DeviceContext[ID2D1DeviceContext], Bitmap[ID2D1Bitmap], Bitmap1[ID2D1Bitmap1]);
+AutoRemover!(for Factory[ID2D1Factory], Device[ID2D1Device], DeviceContext[ID2D1DeviceContext], Bitmap[ID2D1Bitmap], Bitmap1[ID2D1Bitmap1]);
 AutoRemover!(for SolidColorBrush[ID2D1SolidColorBrush], LinearGradientBrush[ID2D1LinearGradientBrush], RadialGradientBrush[ID2D1RadialGradientBrush]);
 AutoRemover!(for GradientStopCollection[ID2D1GradientStopCollection], ImageRef[ID2D1Image], GaussianBlurEffect[ID2D1GaussianBlurEffect]);
 AutoRemover!(for PathGeometry[ID2D1PathGeometry], GeometrySink[ID2D1GeometrySink]);
