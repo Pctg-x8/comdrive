@@ -92,7 +92,7 @@ impl TextureDesc2D
         TextureDesc2D(D3D11_TEXTURE2D_DESC
         {
             Width: width as _, Height: height as _, Format: format,
-            MipLevels: 1, ArraySize: 1, SampleDesc: dxgi::SampleDesc { Count: 1, Quality: 0 },
+            MipLevels: 0, ArraySize: 1, SampleDesc: dxgi::SampleDesc { Count: 1, Quality: 0 },
             Usage: D3D11_USAGE_DEFAULT, BindFlags: 0, CPUAccessFlags: 0, MiscFlags: 0
         })
     }
