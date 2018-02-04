@@ -5,8 +5,6 @@ use winapi::ctypes::{c_void, c_char};
 use winapi::um::d3d11::*;
 use winapi::um::d3dcommon::*;
 use winapi::shared::dxgiformat::*;
-use std::borrow::Cow;
-use std::ops::Deref;
 use metrics::MarkForSameBits;
 
 pub type GenericResult<T> = std::result::Result<T, Box<std::error::Error>>;
@@ -175,23 +173,6 @@ impl InputElement
     }
 }
 
-/// シェーダ生成のもとになるオブジェクト
-pub trait ShaderSource { fn binary(&self) -> IOResult<Cow<[u8]>>; }
-/// ファイルパス
-impl ShaderSource for str
-{
-    fn binary(&self) -> IOResult<Cow<[u8]>>
-    {
-        use std::io::Read;
-        std::fs::File::open(self).and_then(|mut fp| { let mut b = Vec::new(); fp.read_to_end(&mut b).map(|_| b.into()) })
-    }
-}
-/// ロード済みバイナリ
-impl ShaderSource for d3d12::ShaderBinary
-{
-    fn binary(&self) -> IOResult<Cow<[u8]>> { Ok(self.deref().into()) }
-}
-
 /// 頂点シェーダ
 pub struct VertexShader(*mut ID3D11VertexShader);
 /// ピクセルシェーダ
@@ -199,7 +180,7 @@ pub struct PixelShader(*mut ID3D11PixelShader);
 impl Device
 {
     /// 頂点シェーダの作成
-    pub fn new_vertex_shader<Source: ShaderSource + ?Sized>(&self, source: &Source) -> GenericResult<VertexShader>
+    pub fn new_vertex_shader<Source: d3d::ShaderSource + ?Sized>(&self, source: &Source) -> GenericResult<VertexShader>
     {
         source.binary().map_err(From::from).and_then(|b|
         {
@@ -209,7 +190,7 @@ impl Device
         })
     }
     /// ピクセルシェーダの作成
-    pub fn new_pixel_shader<Source: ShaderSource + ?Sized>(&self, source: &Source) -> GenericResult<PixelShader>
+    pub fn new_pixel_shader<Source: d3d::ShaderSource + ?Sized>(&self, source: &Source) -> GenericResult<PixelShader>
     {
         source.binary().map_err(From::from).and_then(|b|
         {
