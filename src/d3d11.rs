@@ -92,7 +92,7 @@ impl TextureDesc2D
         TextureDesc2D(D3D11_TEXTURE2D_DESC
         {
             Width: width as _, Height: height as _, Format: format,
-            MipLevels: 0, ArraySize: 1, SampleDesc: dxgi::SampleDesc { Count: 1, Quality: 0 },
+            MipLevels: 1, ArraySize: 1, SampleDesc: dxgi::SampleDesc { Count: 1, Quality: 0 },
             Usage: D3D11_USAGE_DEFAULT, BindFlags: 0, CPUAccessFlags: 0, MiscFlags: 0
         })
     }
@@ -104,7 +104,7 @@ impl TextureDesc2D
         let mut handle = std::ptr::null_mut();
         let hr = if let Some(p) = init_data
         {
-            let initial_data = D3D11_SUBRESOURCE_DATA { pSysMem: p.as_ptr() as _, SysMemPitch: pitch as _, SysMemSlicePitch: 0 };
+            let initial_data = D3D11_SUBRESOURCE_DATA { pSysMem: p.as_ptr() as _, SysMemPitch: pitch as _, SysMemSlicePitch: p.len() as _ };
             unsafe { (*device.0).CreateTexture2D(&self.0, &initial_data, &mut handle) }
         }
         else { unsafe { (*device.0).CreateTexture2D(&self.0, std::ptr::null(), &mut handle) } };
