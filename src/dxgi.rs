@@ -25,6 +25,11 @@ pub enum AlphaMode
 /// most used formats
 pub use winapi::shared::dxgiformat::DXGI_FORMAT_R8G8B8A8_UNORM;
 pub use winapi::shared::dxgiformat::DXGI_FORMAT_B8G8R8A8_UNORM;
+pub use winapi::shared::dxgiformat::DXGI_FORMAT_R32_FLOAT;
+pub use winapi::shared::dxgiformat::DXGI_FORMAT_R32G32_FLOAT;
+pub use winapi::shared::dxgiformat::DXGI_FORMAT_R32G32B32_FLOAT;
+pub use winapi::shared::dxgiformat::DXGI_FORMAT_R32G32B32A32_FLOAT;
+
 
 /// Driver object for IDXGIFactory2
 pub struct Factory(*mut IDXGIFactory2);
