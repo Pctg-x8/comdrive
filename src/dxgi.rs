@@ -22,6 +22,10 @@ pub enum AlphaMode
     Straight = DXGI_ALPHA_MODE_STRAIGHT as _, Ignored = DXGI_ALPHA_MODE_IGNORE as _
 }
 
+/// most used formats
+pub use winapi::shared::dxgiformat::DXGI_FORMAT_R8G8B8A8_UNORM;
+pub use winapi::shared::dxgiformat::DXGI_FORMAT_B8G8R8A8_UNORM;
+
 /// Driver object for IDXGIFactory2
 pub struct Factory(*mut IDXGIFactory2);
 impl Factory
