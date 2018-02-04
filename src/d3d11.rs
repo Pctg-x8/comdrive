@@ -104,7 +104,7 @@ impl TextureDesc2D
         let mut handle = std::ptr::null_mut();
         let hr = if let Some(p) = init_data
         {
-            let initial_data = D3D11_SUBRESOURCE_DATA { pSysMem: p as *const _ as _, SysMemPitch: 0, SysMemSlicePitch: 0 };
+            let initial_data = D3D11_SUBRESOURCE_DATA { pSysMem: p.as_ptr() as _, SysMemPitch: 0, SysMemSlicePitch: 0 };
             unsafe { (*device.0).CreateTexture2D(&self.0, &initial_data, &mut handle) }
         }
         else { unsafe { (*device.0).CreateTexture2D(&self.0, std::ptr::null(), &mut handle) } };
