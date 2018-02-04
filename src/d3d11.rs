@@ -7,6 +7,9 @@ use winapi::um::d3dcommon::*;
 use winapi::shared::dxgiformat::*;
 use metrics::MarkForSameBits;
 
+pub use winapi::um::d3d11::D3D11_VIEWPORT as Viewport;
+pub use winapi::um::d3dcommon::D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP as TriangleStripTopo;
+
 pub type GenericResult<T> = std::result::Result<T, Box<std::error::Error>>;
 
 /// Driver object for ID3D11Device
@@ -96,6 +99,8 @@ impl TextureDesc2D
     }
     pub fn bound(&mut self, flags: BindFlags) -> &mut Self { self.0.BindFlags = flags.0; self }
     pub fn immutable(&mut self) -> &mut Self { self.0.Usage = D3D11_USAGE_IMMUTABLE; self }
+    pub fn staging(&mut self) -> &mut Self { self.0.Usage = D3D11_USAGE_STAGING; self }
+    pub fn cpu_readable(&mut self) -> &mut Self { self.0.CPUAccessFlags |= D3D11_CPU_ACCESS_READ; self }
     pub fn create(&self, device: &Device, init_data: Option<&[u8]>, pitch: u32) -> IOResult<Texture2D>
     {
         assert!(self.0.Usage != D3D11_USAGE_IMMUTABLE || init_data.is_some(), "Using immutable texture without initial data");
