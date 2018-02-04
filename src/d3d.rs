@@ -28,3 +28,8 @@ impl ShaderSource for d3d12::ShaderBinary
 {
     fn binary(&self) -> IOResult<Cow<[u8]>> { Ok(Cow::Borrowed(self)) }
 }
+/// 埋め込みバイナリ
+impl ShaderSource for [u8]
+{
+    fn binary(&self) -> IOResult<Cow<[u8]>> { Ok(Cow::Borrowed(self)) }
+}
