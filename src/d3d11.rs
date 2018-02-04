@@ -98,7 +98,7 @@ impl TextureDesc2D
     }
     pub fn bound(&mut self, flags: BindFlags) -> &mut Self { self.0.BindFlags = flags.0; self }
     pub fn immutable(&mut self) -> &mut Self { self.0.Usage = D3D11_USAGE_IMMUTABLE; self }
-    pub fn create<Pixel: ?Sized>(&self, device: &Device, init_data: Option<&Pixel>) -> IOResult<Texture2D>
+    pub fn create(&self, device: &Device, init_data: Option<&[u8]>) -> IOResult<Texture2D>
     {
         assert!(self.0.Usage != D3D11_USAGE_IMMUTABLE || init_data.is_some(), "Using immutable texture without initial data");
         let mut handle = std::ptr::null_mut();
