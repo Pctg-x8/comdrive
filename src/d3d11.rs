@@ -321,6 +321,11 @@ impl ImmediateContext
         unsafe { (*self.0).UpdateSubresource(buffer.as_raw_handle(), 0, std::ptr::null(), data, 0, 0) };
         self
     }
+    /// リソースのコピー
+    pub fn copy_resource<Res1: Resource, Res2: Resource>(&self, src: &Res1, dst: &Res2) -> &Self
+    {
+        unsafe{ (*self.0).CopyResource(src.as_raw_resource_ptr(), dst.as_raw_resource_ptr()) }; self
+    }
 }
 
 AutoRemover!(for Device[ID3D11Device], ImmediateContext[ID3D11DeviceContext], DeferredContext[ID3D11DeviceContext]);
