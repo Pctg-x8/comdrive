@@ -230,6 +230,18 @@ impl Device
 }
 /// 深度ステンシルビュー(未完成)
 pub struct DepthStencilView(*mut ID3D11DepthStencilView);
+/// シェーダリソースビュー
+pub struct ShaderResourceView(*mut ID3D11ShaderResourceView);
+impl AsRawHandle<ID3D11ShaderResourceView> for ShaderResourceView { fn as_raw_handle(&self) -> *mut ID3D11ShaderResourceView { self.0 } }
+impl Device
+{
+    /// シェーダリソースビューを作る
+    pub fn new_shader_resource_view<R: Resource>(&self, resource: &R) -> IOResult<ShaderResourceView>
+    {
+        let mut handle = std::ptr::null_mut();
+        unsafe { (*self.0).CreateShaderResourceView(resource.as_raw_resource_ptr(), std::ptr::null(), &mut handle) }.to_result_with(|| ShaderResourceView(handle))
+    }
+}
 
 /// コマンドたち
 impl ImmediateContext
@@ -269,6 +281,11 @@ impl ImmediateContext
     {
         unsafe { (*self.0).PSSetConstantBuffers(0, buffers.len() as _, buffers.as_ptr()) };
         self
+    }
+    /// ピクセルシェーダのリソースを設定
+    pub fn set_pixel_resource_views(&self, views: &[*mut ID3D11ShaderResourceView]) -> &Self
+    {
+        unsafe { (*self.0).PSSetShaderResources(0, views.len() as _, views.as_ptr()) }; self
     }
     /// プリミティブトポロジの設定
     pub fn set_primitive_topology(&self, topo: D3D11_PRIMITIVE_TOPOLOGY) -> &Self
