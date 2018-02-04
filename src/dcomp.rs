@@ -96,9 +96,13 @@ impl Parameter for f32
 macro_rules! ObtainPropertySetter
 {
     (extern fn ($this: ident: $caller: ty, $($pt: ty => $name: ident)|*) -> $rval: ty) =>
-    (
-        ($(unsafe { std::mem::transmute::<_, unsafe extern "system" fn($caller, $pt) -> $rval>((*(*$this.0).lpVtbl).$name) }),*)
-    )
+    {
+        ($(std::mem::transmute::<_, unsafe extern "system" fn($caller, $pt) -> $rval>((*(*$this.0).lpVtbl).$name)),*)
+    };
+    (extern fn (v [$vtbl: expr] $caller: ty, $($pt: ty => $name: ident)|*) -> $rval: ty) =>
+    {
+        ($(std::mem::transmute::<_, unsafe extern "system" fn($caller, $pt) -> $rval>($vtbl.$name)),*)
+    }
 }
 
 /// Driver object for IDCompositionVisual3
@@ -161,7 +165,8 @@ impl Visual
     /// Set Transform
     pub fn set_transform<T: Transform>(&self, transform: &T) -> IOResult<()>
     {
-        let to = unsafe { std::mem::transmute::<_, unsafe extern "system" fn(*mut IDCompositionVisual, *const IDCompositionTransform) -> HRESULT>((*(*self.0).lpVtbl).parent.parent.parent.SetTransform1) };
+        let vtbl = unsafe { &(*(*self.0).lpVtbl).parent.parent.parent };
+        let to = unsafe { ObtainPropertySetter!(extern fn(v [vtbl] *mut IDCompositionVisual, *const IDCompositionTransform => SetTransform_1) -> HRESULT) };
         unsafe { to(self.0 as _, transform.as_raw_transform()) }.checked()
     }
     /// Set Effect
@@ -177,15 +182,15 @@ impl Visual
     /// Set X Offset
     pub fn set_left<P: Parameter>(&self, v: P) -> IOResult<()>
     {
-        let fpo = unsafe { std::mem::transmute::<_, unsafe extern "system" fn(*mut IDCompositionVisual, *const IDCompositionAnimation) -> HRESULT>((*(*self.0).lpVtbl).parent.parent.parent.SetOffsetX1) };
-        let fpv = unsafe { std::mem::transmute::<_, unsafe extern "system" fn(*mut IDCompositionVisual, c_float) -> HRESULT>((*(*self.0).lpVtbl).parent.parent.parent.SetOffsetX2) };
+        let vtbl = unsafe { &(*(*self.0).lpVtbl).parent.parent.parent };
+        let (fpo, fpv) = unsafe { ObtainPropertySetter!(extern fn(v [vtbl] *mut IDCompositionVisual, *const IDCompositionAnimation => SetOffsetX_1 | c_float => SetOffsetX_2) -> HRESULT) };
         v.pass(|x| unsafe { fpv(self.0 as _, x) }, |x| unsafe { fpo(self.0 as _, x) })
     }
     /// Set Y Offset
     pub fn set_top<P: Parameter>(&self, v: P) -> IOResult<()>
     {
-        let fpo = unsafe { std::mem::transmute::<_, unsafe extern "system" fn(*mut IDCompositionVisual, *const IDCompositionAnimation) -> HRESULT>((*(*self.0).lpVtbl).parent.parent.parent.SetOffsetY1) };
-        let fpv = unsafe { std::mem::transmute::<_, unsafe extern "system" fn(*mut IDCompositionVisual, c_float) -> HRESULT>((*(*self.0).lpVtbl).parent.parent.parent.SetOffsetY2) };
+        let vtbl = unsafe { &(*(*self.0).lpVtbl).parent.parent.parent };
+        let (fpo, fpv) = unsafe { ObtainPropertySetter!(extern fn(v [vtbl] *mut IDCompositionVisual, *const IDCompositionAnimation => SetOffsetY_1 | c_float => SetOffsetY_2) -> HRESULT) };
         v.pass(|x| unsafe { fpv(self.0 as _, x) }, |x| unsafe { fpo(self.0 as _, x) })
     }
     /// Set Offset
@@ -196,8 +201,7 @@ impl Visual
     /// Set Opacity
     pub fn set_opacity<P: Parameter>(&self, a: P) -> IOResult<()>
     {
-        let fpo = unsafe { std::mem::transmute::<_, unsafe extern "system" fn(*mut IDCompositionVisual3, *const IDCompositionAnimation) -> HRESULT>((*(*self.0).lpVtbl).SetOpacity1) };
-        let fpv = unsafe { std::mem::transmute::<_, unsafe extern "system" fn(*mut IDCompositionVisual3, c_float) -> HRESULT>((*(*self.0).lpVtbl).SetOpacity2) };
+        let (fpo, fpv) = unsafe { ObtainPropertySetter!(extern fn(self: *mut IDCompositionVisual3, *const IDCompositionAnimation => SetOpacity_1 | c_float => SetOpacity_2) -> HRESULT) };
         a.pass(|x| unsafe { fpv(self.0, x) }, |x| unsafe { fpo(self.0, x) })
     }
     /// 拡縮時のビットマップ補間モードを指定する
@@ -239,13 +243,13 @@ impl ScaleTransform
     /// Set X Scaling
     pub fn set_x_scale<P: Parameter>(&self, v: P) -> IOResult<()>
     {
-        let (fpo, fpv) = ObtainPropertySetter!(extern fn(self: *mut IDCompositionScaleTransform, *const IDCompositionAnimation => SetScaleX1 | c_float => SetScaleX2) -> HRESULT);
+        let (fpo, fpv) = unsafe { ObtainPropertySetter!(extern fn(self: *mut IDCompositionScaleTransform, *const IDCompositionAnimation => SetScaleX_1 | c_float => SetScaleX_2) -> HRESULT) };
         v.pass(|x| unsafe { fpv(self.0 as _, x) }, |x| unsafe { fpo(self.0 as _, x) })
     }
     /// Set Y Scaling
     pub fn set_y_scale<P: Parameter>(&self, v: P) -> IOResult<()>
     {
-        let (fpo, fpv) = ObtainPropertySetter!(extern fn(self: *mut IDCompositionScaleTransform, *const IDCompositionAnimation => SetScaleY1 | c_float => SetScaleY2) -> HRESULT);
+        let (fpo, fpv) = unsafe { ObtainPropertySetter!(extern fn(self: *mut IDCompositionScaleTransform, *const IDCompositionAnimation => SetScaleY_1 | c_float => SetScaleY_2) -> HRESULT) };
         v.pass(|x| unsafe { fpv(self.0 as _, x) }, |x| unsafe { fpo(self.0 as _, x) })
     }
     /// Set Both parameter
@@ -259,19 +263,19 @@ impl RotateTransform
     /// Set Angle
     pub fn set_angle<P: Parameter>(&self, v: P) -> IOResult<()>
     {
-        let (fpo, fpv) = ObtainPropertySetter!(extern fn(self: *mut IDCompositionRotateTransform, *const IDCompositionAnimation => SetAngle1 | c_float => SetAngle2) -> HRESULT);
+        let (fpo, fpv) = unsafe { ObtainPropertySetter!(extern fn(self: *mut IDCompositionRotateTransform, *const IDCompositionAnimation => SetAngle_1 | c_float => SetAngle_2) -> HRESULT) };
         v.pass(|x| unsafe { fpv(self.0 as _, x) }, |x| unsafe { fpo(self.0 as _, x) })
     }
     /// Set Center X
     pub fn set_center_x<P: Parameter>(&self, v: P) -> IOResult<()>
     {
-        let (fpo, fpv) = ObtainPropertySetter!(extern fn(self: *mut IDCompositionRotateTransform, *const IDCompositionAnimation => SetCenterX1 | c_float => SetCenterX2) -> HRESULT);
+        let (fpo, fpv) = unsafe { ObtainPropertySetter!(extern fn(self: *mut IDCompositionRotateTransform, *const IDCompositionAnimation => SetCenterX_1 | c_float => SetCenterX_2) -> HRESULT) };
         v.pass(|x| unsafe { fpv(self.0 as _, x) }, |x| unsafe { fpo(self.0 as _, x) })
     }
     /// Set Center Y
     pub fn set_center_y<P: Parameter>(&self, v: P) -> IOResult<()>
     {
-        let (fpo, fpv) = ObtainPropertySetter!(extern fn(self: *mut IDCompositionRotateTransform, *const IDCompositionAnimation => SetCenterY1 | c_float => SetCenterY2) -> HRESULT);
+        let (fpo, fpv) = unsafe { ObtainPropertySetter!(extern fn(self: *mut IDCompositionRotateTransform, *const IDCompositionAnimation => SetCenterY_1 | c_float => SetCenterY_2) -> HRESULT) };
         v.pass(|x| unsafe { fpv(self.0 as _, x) }, |x| unsafe { fpo(self.0 as _, x) })
     }
     /// Set Center Parameter
@@ -480,8 +484,8 @@ impl GaussianBlurEffect
 {
     pub fn set_standard_deviation<P: Parameter>(&self, param: P) -> IOResult<()>
     {
-        let (fpo, fpv) = ObtainPropertySetter!(extern fn(self: *mut IDCompositionGaussianBlurEffect,
-            *const IDCompositionAnimation => SetStandardDeviation1 | c_float => SetStandardDeviation2) -> HRESULT);
+        let (fpo, fpv) = unsafe { ObtainPropertySetter!(extern fn(self: *mut IDCompositionGaussianBlurEffect,
+            *const IDCompositionAnimation => SetStandardDeviation_1 | c_float => SetStandardDeviation_2) -> HRESULT) };
         param.pass(|x| unsafe { fpv(self.0, x) }, |x| unsafe { fpo(self.0, x) })
     }
 }
