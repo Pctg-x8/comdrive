@@ -84,6 +84,33 @@ impl AsRawHandle<ID3D11Texture2D> for Texture2D { fn as_raw_handle(&self) -> *mu
 impl FromRawHandle<ID3D11Texture2D> for Texture2D { unsafe fn from_raw_handle(h: *mut ID3D11Texture2D) -> Self { Texture2D(h) } }
 impl AsIUnknown for Texture2D { fn as_iunknown(&self) -> *mut IUnknown { self.0 as _ } }
 impl dxgi::SurfaceChild for Texture2D { fn base(&self) -> IOResult<dxgi::Surface> { self.query_interface() } }
+pub struct TextureDesc2D(D3D11_TEXTURE2D_DESC);
+impl TextureDesc2D
+{
+    pub fn new(width: u32, height: u32, format: dxgi::Format) -> Self
+    {
+        TextureDesc2D(D3D11_TEXTURE2D_DESC
+        {
+            Width: width as _, Height: height as _, Format: format,
+            MipLevels: 1, ArraySize: 1, SampleDesc: dxgi::SampleDesc { Count: 1, Quality: 0 },
+            Usage: D3D11_USAGE_DEFAULT, BindFlags: 0, CPUAccessFlags: 0, MiscFlags: 0
+        })
+    }
+    pub fn bound(&mut self, flags: BindFlags) -> &mut Self { self.0.BindFlags = flags.0; self }
+    pub fn immutable(&mut self) -> &mut Self { self.0.Usage = D3D11_USAGE_IMMUTABLE; self }
+    pub fn create<Pixel: ?Sized>(&self, device: &Device, init_data: Option<&Pixel>) -> IOResult<Texture2D>
+    {
+        assert!(self.0.Usage != D3D11_USAGE_IMMUTABLE || init_data.is_some(), "Using immutable texture without initial data");
+        let mut handle = std::ptr::null_mut();
+        let hr = if let Some(p) = init_data
+        {
+            let initial_data = D3D11_SUBRESOURCE_DATA { pSysMem: p as *const _ as _, SysMemPitch: 0, SysMemSlicePitch: 0 };
+            unsafe { (*device.0).CreateTexture2D(&self.0, &initial_data, &mut handle) }
+        }
+        else { unsafe { (*device.0).CreateTexture2D(&self.0, std::ptr::null(), &mut handle) } };
+        hr.to_result_with(|| Texture2D(handle))
+    }
+}
 
 /// バッファ(GPU VRAM上のデータブロック)
 pub struct Buffer(*mut ID3D11Buffer, usize);
