@@ -336,6 +336,12 @@ impl ImmediateContext
         unsafe { (*self.0).PSSetShader(shader.0, std::ptr::null(), 0) };
         self
     }
+    /// 頂点シェーダの定数バッファを設定
+    pub fn set_vertex_constant_buffers(&self, buffers: &[*mut ID3D11Buffer]) -> &Self
+    {
+        unsafe { (*self.0).VSSetConstantBuffers(0, buffers.len() as _, buffers.as_ptr()) };
+        self
+    }
     /// ピクセルシェーダの定数バッファを設定
     pub fn set_pixel_constant_buffers(&self, buffers: &[*mut ID3D11Buffer]) -> &Self
     {
@@ -376,9 +382,9 @@ impl ImmediateContext
         unsafe { (*self.0).Draw(vertex_count, 0) }; self
     }
     /// サブリソースのこうしん
-    pub fn update_subresource<Resource: AsRawHandle<ID3D11Resource>>(&self, buffer: &Resource, data: *const c_void) -> &Self
+    pub fn update_subresource<R: Resource>(&self, buffer: &R, data: *const c_void) -> &Self
     {
-        unsafe { (*self.0).UpdateSubresource(buffer.as_raw_handle(), 0, std::ptr::null(), data, 0, 0) };
+        unsafe { (*self.0).UpdateSubresource(buffer.as_raw_resource_ptr(), 0, std::ptr::null(), data, 0, 0) };
         self
     }
     /// リソースのコピー
