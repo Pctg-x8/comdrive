@@ -146,6 +146,17 @@ impl Device
         let mut handle = std::ptr::null_mut();
         unsafe { (*self.0).CreateBuffer(&desc, &initial_data, &mut handle) }.to_result_with(|| Buffer(handle, std::mem::size_of::<T>()))
     }
+    /// UpdateSubresource可能なバッファの作成
+    pub fn new_buffer_update(&self, bind_flags: BindFlags, size: usize) -> IOResult<Buffer>
+    {
+        let desc = D3D11_BUFFER_DESC
+        {
+            BindFlags: bind_flags.0, ByteWidth: size as _, StructureByteStride: std::mem::size_of::<f32>() as _,
+            Usage: D3D11_USAGE_DEFAULT, CPUAccessFlags: 0, MiscFlags: 0
+        };
+        let mut handle = std::ptr::null_mut();
+        unsafe { (*self.0).CreateBuffer(&desc, std::ptr::null(), &mut handle) }.to_result_with(|| Buffer(handle, 0))
+    }
     /// 可変バッファの作成
     pub fn new_buffer_mut(&self, bind_flags: BindFlags, size: usize) -> IOResult<Buffer>
     {
