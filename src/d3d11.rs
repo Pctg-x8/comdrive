@@ -121,7 +121,7 @@ impl AsRawHandle<ID3D11Buffer> for Buffer { fn as_raw_handle(&self) -> *mut ID3D
 impl Device
 {
     /// 不変バッファの作成
-    pub fn new_buffer<T>(&self, bind_flags: BindFlags, initial_data: &[T]) -> IOResult<Buffer>
+    pub fn new_array_buffer<T>(&self, bind_flags: BindFlags, initial_data: &[T]) -> IOResult<Buffer>
     {
         let desc = D3D11_BUFFER_DESC
         {
@@ -130,6 +130,19 @@ impl Device
             CPUAccessFlags: 0, MiscFlags: 0
         };
         let initial_data = D3D11_SUBRESOURCE_DATA { pSysMem: initial_data.as_ptr() as _, SysMemPitch: 0, SysMemSlicePitch: 0 };
+        let mut handle = std::ptr::null_mut();
+        unsafe { (*self.0).CreateBuffer(&desc, &initial_data, &mut handle) }.to_result_with(|| Buffer(handle, std::mem::size_of::<T>()))
+    }
+    /// 不変バッファの作成
+    pub fn new_buffer<T>(&self, bind_flags: BindFlags, initial_data: &T) -> IOResult<Buffer>
+    {
+        let desc = D3D11_BUFFER_DESC
+        {
+            BindFlags: bind_flags.0, ByteWidth: std::mem::size_of::<T>() as _,
+            StructureByteStride: std::mem::size_of::<f32>() as _, Usage: D3D11_USAGE_IMMUTABLE,
+            CPUAccessFlags: 0, MiscFlags: 0
+        };
+        let initial_data = D3D11_SUBRESOURCE_DATA { pSysMem: initial_data as *const _ as *const _, SysMemPitch: 0, SysMemSlicePitch: 0 };
         let mut handle = std::ptr::null_mut();
         unsafe { (*self.0).CreateBuffer(&desc, &initial_data, &mut handle) }.to_result_with(|| Buffer(handle, std::mem::size_of::<T>()))
     }
