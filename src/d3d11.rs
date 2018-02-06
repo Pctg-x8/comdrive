@@ -334,6 +334,11 @@ impl ImmediateContext
     {
         unsafe { (*self.0).PSSetShaderResources(0, views.len() as _, views.as_ptr()) }; self
     }
+    /// ピクセルシェーダのサンプラーを設定
+    pub fn set_pixel_samplers(&self, samplers: &[*mut ID3D11SamplerState]) -> &Self
+    {
+        unsafe { (*self.0).PSSetSamplers(0, samplers.len() as _, samplers.as_ptr()) }; self
+    }
     /// プリミティブトポロジの設定
     pub fn set_primitive_topology(&self, topo: D3D11_PRIMITIVE_TOPOLOGY) -> &Self
     {
