@@ -178,6 +178,48 @@ impl InputElement
     }
 }
 
+/// サンプラーステート
+pub struct SamplerStateBuilder(D3D11_SAMPLER_DESC);
+impl SamplerStateBuilder
+{
+    pub fn new() -> Self
+    {
+        SamplerStateBuilder(D3D11_SAMPLER_DESC
+        {
+            Filter: D3D11_FILTER_MIN_MAG_MIP_LINEAR,
+            AddressU: D3D11_TEXTURE_ADDRESS_CLAMP, AddressV: D3D11_TEXTURE_ADDRESS_CLAMP, AddressW: D3D11_TEXTURE_ADDRESS_CLAMP,
+            MipLODBias: 0.0, MaxAnisotropy: 1, ComparisonFunc: D3D11_COMPARISON_ALWAYS,
+            BorderColor: [0.0; 4], MinLOD: 0.0, MaxLOD: 0.0
+        })
+    }
+    pub fn filter(&mut self, f: D3D11_FILTER) -> &mut Self { self.0.Filter = f; self }
+    pub fn address(&mut self, u: D3D11_TEXTURE_ADDRESS_MODE, v: D3D11_TEXTURE_ADDRESS_MODE, w: D3D11_TEXTURE_ADDRESS_MODE) -> &mut Self
+    {
+        self.0.AddressU = u; self.0.AddressV = v; self.0.AddressW = w; self
+    }
+    pub fn mip_lod_bias(&mut self, bias: f32) -> &mut Self { self.0.MipLODBias = bias; self }
+    pub fn max_anisotropy(&mut self, aniso: u8) -> &mut Self
+    {
+        assert!(1 <= aniso && aniso <= 16, "MaxAnisotropy must be between 1 and 16");
+        self.0.MaxAnisotropy = aniso as _; self
+    }
+    pub fn cmp_func(&mut self, f: D3D11_COMPARISON_FUNC) -> &mut Self { self.0.ComparisonFunc = f; self }
+    pub fn border_color(&mut self, r: f32, g: f32, b: f32, a: f32) -> &mut Self
+    {
+        self.0.BorderColor = [r, g, b, a]; self
+    }
+    pub fn lod_range(&mut self, min: f32, max: f32) -> &mut Self { self.0.MinLOD = min; self.0.MaxLOD = max; self }
+    
+    pub fn create(&self, device: &Device) -> IOResult<SamplerState>
+    {
+        let mut h = std::ptr::null_mut();
+        unsafe { (*device.0).CreateSamplerState(&self.0, &mut h) }.to_result_with(|| SamplerState(h))
+    }
+}
+/// サンプラーステート
+pub struct SamplerState(*mut ID3D11SamplerState);
+impl AsRawHandle<ID3D11SamplerState> for SamplerState { fn as_raw_handle(&self) -> *mut ID3D11SamplerState { self.0 } }
+
 /// 頂点シェーダ
 pub struct VertexShader(*mut ID3D11VertexShader);
 /// ピクセルシェーダ
@@ -328,8 +370,40 @@ impl ImmediateContext
     }
 }
 
+pub use winapi::um::d3d11::{
+    D3D11_MAP_READ as MAP_READ, D3D11_MAP_WRITE as MAP_WRITE, D3D11_MAP_READ_WRITE as MAP_RW,
+    D3D11_MAP_WRITE_DISCARD as MAP_WRITE_DISCARD, D3D11_MAP_WRITE_NO_OVERWRITE as MAP_WRITE_NO_OVERWRITE
+};
+
+/// マップ済みリソース
+pub struct MappedResource<'c, 'r, R: Resource + 'r>(&'c ImmediateContext, &'r R, D3D11_MAPPED_SUBRESOURCE);
+impl ImmediateContext
+{
+    /// リソースをシステムメモリにマップ
+    pub fn map<'c, 'r, R: Resource + 'r>(&'c self, res: &'r R, rwmode: D3D11_MAP) -> IOResult<MappedResource<'c, 'r, R>>
+    {
+        let mut mp = unsafe { std::mem::uninitialized() };
+        unsafe { (*self.0).Map(res.as_raw_resource_ptr(), 0, rwmode, 0, &mut mp) }.to_result_with(|| MappedResource(self, res, mp))
+    }
+}
+impl<'c, 'r, R: Resource + 'r> Drop for MappedResource<'c, 'r, R>
+{
+    /// リソースをアンマップ
+    fn drop(&mut self)
+    {
+        unsafe { (*self.0 .0).Unmap(self.1.as_raw_resource_ptr(), 0); }
+    }
+}
+impl<'c, 'r, R: Resource + 'r> MappedResource<'c, 'r, R>
+{
+    pub fn data_ptr(&self) -> *const c_void { self.2.pData }
+    pub fn data_ptr_mut(&self) -> *mut c_void { self.2.pData }
+    pub fn row_pitch(&self) -> usize { self.2.RowPitch as _ }
+    pub fn depth_pitch(&self) -> usize { self.2.DepthPitch as _ }
+}
+
 AutoRemover!(for Device[ID3D11Device], ImmediateContext[ID3D11DeviceContext], DeferredContext[ID3D11DeviceContext]);
-AutoRemover!(for Texture2D[ID3D11Texture2D], Buffer[ID3D11Buffer], InputLayout[ID3D11InputLayout]);
+AutoRemover!(for Texture2D[ID3D11Texture2D], Buffer[ID3D11Buffer], InputLayout[ID3D11InputLayout], SamplerState[ID3D11SamplerState]);
 AutoRemover!(for VertexShader[ID3D11VertexShader], PixelShader[ID3D11PixelShader], RenderTargetView[ID3D11RenderTargetView]);
 
 /// Iterator Support
