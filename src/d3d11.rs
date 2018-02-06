@@ -371,7 +371,7 @@ impl ImmediateContext
     /// リソースのコピー
     pub fn copy_resource<Res1: Resource, Res2: Resource>(&self, src: &Res1, dst: &Res2) -> &Self
     {
-        unsafe{ (*self.0).CopyResource(src.as_raw_resource_ptr(), dst.as_raw_resource_ptr()) }; self
+        unsafe{ (*self.0).CopyResource(dst.as_raw_resource_ptr(), src.as_raw_resource_ptr()) }; self
     }
 }
 
