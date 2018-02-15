@@ -87,9 +87,9 @@ impl Factory
 }
 impl HwndRenderTarget
 {
-    pub fn resize<S: AsRef<D2D1_SIZE_U> + ?Sized>(&self, new_size: &S) -> IOResult<()>
+    pub fn resize<S: metrics::MarkForSameBits<D2D1_SIZE_U>>(&self, new_size: &S) -> IOResult<()>
     {
-        unsafe { (*self.0).Resize(new_size.as_ref()) }.to_result(())
+        unsafe { (*self.0).Resize(transmute_safe(new_size)) }.to_result(())
     }
 }
 
