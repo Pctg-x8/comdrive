@@ -160,6 +160,13 @@ pub trait RenderTarget
         unsafe { (*self.as_rt_handle()).DrawBitmap(bmp.0, transmute_safe(rect), 1.0, D2D1_INTERPOLATION_MODE_LINEAR, null()) };
         self
     }
+
+    /// ブラシの作成
+    fn new_solid_color_brush(&self, col: &ColorF) -> IOResult<SolidColorBrush>
+    {
+        let mut handle = std::ptr::null_mut();
+        unsafe { (*self.as_rt_handle()).CreateSolidColorBrush(col, std::ptr::null(), &mut handle) }.to_result_with(|| SolidColorBrush(handle))
+    }
 }
 
 impl RenderTarget for HwndRenderTarget { fn as_rt_handle(&self) -> *mut ID2D1RenderTarget { self.0 as _ } }
