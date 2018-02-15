@@ -85,6 +85,13 @@ impl Factory
         unsafe { (*self.0).CreateHwndRenderTarget(&rtprops, &hwrtprops, &mut handle) }.to_result_with(|| HwndRenderTarget(handle))
     }
 }
+impl HwndRenderTarget
+{
+    pub fn resize<S: AsRef<D2D1_SIZE_U> + ?Sized>(&self, new_size: &S) -> IOResult<()>
+    {
+        unsafe { (*self.0).Resize(new_size.as_ref()) }.to_result(())
+    }
+}
 
 /// Driver object for ID2D1DeviceContext
 pub struct DeviceContext(*mut ID2D1DeviceContext);
