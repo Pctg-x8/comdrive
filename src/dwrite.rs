@@ -175,3 +175,6 @@ impl Factory
 impl AsRawHandle<IDWriteFontFile> for FontFile { fn as_raw_handle(&self) -> *mut IDWriteFontFile { self.0 } }
 
 AutoRemover!(for Factory[IDWriteFactory], TextFormat[IDWriteTextFormat], TextLayout[IDWriteTextLayout], FontFile[IDWriteFontFile]);
+impl Clone for Factory { fn clone(&self) -> Self { unsafe { (*self.0).AddRef() }; Factory(self.0) } }
+impl Clone for TextFormat { fn clone(&self) -> Self { unsafe { (*self.0).AddRef() }; TextFormat(self.0) } }
+impl Clone for TextLayout { fn clone(&self) -> Self { unsafe { (*self.0).AddRef() }; TextLayout(self.0) } }
