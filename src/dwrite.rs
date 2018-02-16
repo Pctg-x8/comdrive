@@ -66,11 +66,11 @@ impl Default for FontOptions
 impl Factory
 {
     /// Create Text Format
-    pub fn new_text_format<Name: AsRef<WideCStr> + ?Sized>(&self, family_name: &Name, collection: Option<&FontCollection>, size: f32, options: FontOptions) -> IOResult<TextFormat>
+    pub fn new_text_format<Name: ::UnivString + ?Sized>(&self, family_name: &Name, collection: Option<&FontCollection>, size: f32, options: FontOptions) -> IOResult<TextFormat>
     {
         let ws_ja_jp = WideCString::from_str("ja-JP").unwrap();
         let mut handle = std::ptr::null_mut();
-        unsafe { (*self.0).CreateTextFormat(family_name.as_ref().as_ptr(), collection.as_ref().map(|x| x.0).unwrap_or(std::ptr::null_mut()),
+        unsafe { (*self.0).CreateTextFormat(family_name.to_wcstr().as_ptr(), collection.as_ref().map(|x| x.0).unwrap_or(std::ptr::null_mut()),
             options.weight, options.style as _, options.stretch, size, ws_ja_jp.as_ptr(), &mut handle) }.to_result_with(|| TextFormat(handle))
     }
 }
@@ -92,11 +92,12 @@ impl FromRawHandle<IDWriteTextLayout1> for TextLayout { unsafe fn from_raw_handl
 impl Factory
 {
     /// Create Text Layout
-    pub fn new_text_layout<Content: AsRef<WideCStr> + ?Sized>(&self, content: &Content, format: &TextFormat, max_width: f32, max_height: f32)
+    pub fn new_text_layout<Content: ::UnivString + ?Sized>(&self, content: &Content, format: &TextFormat, max_width: f32, max_height: f32)
         -> IOResult<TextLayout>
     {
         let mut handle = std::ptr::null_mut();
-        unsafe { (*self.0).CreateTextLayout(content.as_ref().as_ptr(), content.as_ref().len() as _, format.0, max_width, max_height, &mut handle) }
+        let content_w = content.to_wcstr();
+        unsafe { (*self.0).CreateTextLayout(content_w.as_ptr(), content_w.len() as _, format.0, max_width, max_height, &mut handle) }
             .to_result(handle).and_then(|h| unsafe
             {
                 let mut handle1 = std::ptr::null_mut();
@@ -165,11 +166,10 @@ impl Factory
 pub struct FontFile(*mut IDWriteFontFile);
 impl Factory
 {
-    pub fn new_font_file_reference<WPath: AsRef<WideCStr> + ?Sized>(&self, path: &WPath) -> IOResult<FontFile>
+    pub fn new_font_file_reference<WPath: ::UnivString + ?Sized>(&self, path: &WPath) -> IOResult<FontFile>
     {
         let mut handle = std::ptr::null_mut();
-        unsafe { (*self.0).CreateFontFileReference(path.as_ref().as_ptr(), std::ptr::null(), &mut handle) }
-            .to_result_with(|| FontFile(handle))
+        unsafe { (*self.0).CreateFontFileReference(path.to_wcstr().as_ptr(), std::ptr::null(), &mut handle) }.to_result_with(|| FontFile(handle))
     }
 }
 impl AsRawHandle<IDWriteFontFile> for FontFile { fn as_raw_handle(&self) -> *mut IDWriteFontFile { self.0 } }
