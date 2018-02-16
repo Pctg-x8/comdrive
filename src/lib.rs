@@ -43,7 +43,15 @@ impl UnivString for str
 {
     fn to_wcstr(&self) -> Cow<WideCStr> { WideCString::from_str(self).unwrap().into() }
 }
+impl UnivString for String
+{
+    fn to_wcstr(&self) -> Cow<WideCStr> { WideCString::from_str(self).unwrap().into() }
+}
 impl UnivString for WideStr
+{
+    fn to_wcstr(&self) -> Cow<WideCStr> { WideCString::from_wide_str(self).unwrap().into() }
+}
+impl UnivString for WideString
 {
     fn to_wcstr(&self) -> Cow<WideCStr> { WideCString::from_wide_str(self).unwrap().into() }
 }
