@@ -148,6 +148,11 @@ pub trait RenderTarget
     {
         unsafe { (*self.as_rt_handle()).FillRectangle(transmute_safe(area), brush.as_raw_brush()) }; self
     }
+    /// 矩形枠線
+    fn draw_rect<B: Brush + ?Sized>(&self, area: &Rect2F, brush: &B) -> &Self
+    {
+        unsafe { (*self.as_rt_handle()).DrawRectangle(transmute_safe(area), brush.as_raw_brush(), 1.0, null_mut()) }; self
+    }
     /// 線を引く
     fn draw_line<B: Brush + ?Sized>(&self, start: metrics::Point2F, end: metrics::Point2F, brush: &B) -> &Self
     {
