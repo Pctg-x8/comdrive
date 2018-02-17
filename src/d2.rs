@@ -10,7 +10,7 @@ use std::ptr::{null, null_mut};
 use metrics::*;
 use std::convert::AsRef;
 
-pub use winapi::um::d2d1::{D2D1_COLOR_F as ColorF, D2D1_SIZE_F as SizeF};
+pub use winapi::um::d2d1::{D2D1_COLOR_F as ColorF, D2D1_SIZE_F as SizeF, D2D1_ELLIPSE as Ellipse};
 #[repr(C)] #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AntialiasMode
 {
@@ -153,6 +153,21 @@ pub trait RenderTarget
     {
         unsafe { (*self.as_rt_handle()).DrawRectangle(transmute_safe(area), brush.as_raw_brush(), 1.0, null_mut()) }; self
     }
+    /// 楕円
+    fn fill_ellipse<B: Brush + ?Sized>(&self, shape: &Ellipse, brush: &B) -> &Self
+    {
+        unsafe { (*self.as_rt_handle()).FillEllipse(shape, brush.as_raw_brush()); } self
+    }
+    /// 任意の形状
+    fn draw<S: Shape + ?Sized, B: Brush + ?Sized>(&self, shape: &S, brush: &B, line_width: f32) -> &Self
+    {
+        unsafe { shape.draw(&mut *self.as_rt_handle(), brush, line_width); } self
+    }
+    /// 任意の形状 塗りつぶし
+    fn fill<S: Shape + ?Sized, B: Brush + ?Sized>(&self, shape: &S, brush: &B) -> &Self
+    {
+        unsafe { shape.fill(&mut *self.as_rt_handle(), brush); } self
+    }
     /// 線を引く
     fn draw_line<B: Brush + ?Sized>(&self, start: metrics::Point2F, end: metrics::Point2F, brush: &B) -> &Self
     {
@@ -179,6 +194,23 @@ pub trait RenderTarget
         let mut handle = std::ptr::null_mut();
         unsafe { (*self.as_rt_handle()).CreateSolidColorBrush(col, std::ptr::null(), &mut handle) }.to_result_with(|| SolidColorBrush(handle))
     }
+}
+
+/// 形状から描画方式を自動推定
+pub trait Shape
+{
+    fn draw<B: Brush + ?Sized>(&self, p_rt: &mut ID2D1RenderTarget, brush: &B, line_width: f32);
+    fn fill<B: Brush + ?Sized>(&self, p_rt: &mut ID2D1RenderTarget, brush: &B);
+}
+impl Shape for Rect2F
+{
+    fn draw<B: Brush + ?Sized>(&self, p_rt: &mut ID2D1RenderTarget, brush: &B, line_width: f32) { unsafe { p_rt.DrawRectangle(transmute_safe(self), brush.as_raw_brush(), line_width, null_mut()); } }
+    fn fill<B: Brush + ?Sized>(&self, p_rt: &mut ID2D1RenderTarget, brush: &B) { unsafe { p_rt.FillRectangle(transmute_safe(self), brush.as_raw_brush()); } }
+}
+impl Shape for Ellipse
+{
+    fn draw<B: Brush + ?Sized>(&self, p_rt: &mut ID2D1RenderTarget, brush: &B, line_width: f32) { unsafe { p_rt.DrawEllipse(self, brush.as_raw_brush(), line_width, null_mut()); } }
+    fn fill<B: Brush + ?Sized>(&self, p_rt: &mut ID2D1RenderTarget, brush: &B) { unsafe { p_rt.FillEllipse(self, brush.as_raw_brush()); } }
 }
 
 impl RenderTarget for HwndRenderTarget { fn as_rt_handle(&self) -> *mut ID2D1RenderTarget { self.0 as _ } }
