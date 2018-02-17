@@ -213,6 +213,27 @@ impl Shape for Ellipse
     fn fill<B: Brush + ?Sized>(&self, p_rt: &mut ID2D1RenderTarget, brush: &B) { unsafe { p_rt.FillEllipse(self, brush.as_raw_brush()); } }
 }
 
+/// 垂線
+pub struct VLine { pub x: f32, pub top: f32, pub bottom: f32 }
+/// 水平線
+pub struct HLine { pub y: f32, pub left: f32, pub right: f32 }
+impl Shape for VLine
+{
+    fn draw<B: Brush + ?Sized>(&self, p_rt: &mut ID2D1RenderTarget, brush: &B, line_width: f32)
+    {
+        unsafe { p_rt.DrawLine(Point2F { x: self.x, y: self.top }, Point2F { x: self.x, y: self.bottom }, brush.as_raw_brush(), line_width, null_mut()) };
+    }
+    fn fill<B: Brush + ?Sized>(&self, p_rt: &mut ID2D1RenderTarget, brush: &B) { self.draw(p_rt, brush, 1.0); }
+}
+impl Shape for HLine
+{
+    fn draw<B: Brush + ?Sized>(&self, p_rt: &mut ID2D1RenderTarget, brush: &B, line_width: f32)
+    {
+        unsafe { p_rt.DrawLine(Point2F { x: self.left, y: self.y }, Point2F { x: self.right, y: self.y }, brush.as_raw_brush(), line_width, null_mut()) };
+    }
+    fn fill<B: Brush + ?Sized>(&self, p_rt: &mut ID2D1RenderTarget, brush: &B) { self.draw(p_rt, brush, 1.0); }
+}
+
 impl RenderTarget for HwndRenderTarget { fn as_rt_handle(&self) -> *mut ID2D1RenderTarget { self.0 as _ } }
 impl RenderTarget for DeviceContext { fn as_rt_handle(&self) -> *mut ID2D1RenderTarget { self.0 as _ } }
 impl DeviceContext
