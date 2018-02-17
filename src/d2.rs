@@ -169,9 +169,9 @@ pub trait RenderTarget
         unsafe { shape.fill(&mut *self.as_rt_handle(), brush); } self
     }
     /// 線を引く
-    fn draw_line<B: Brush + ?Sized>(&self, start: metrics::Point2F, end: metrics::Point2F, brush: &B) -> &Self
+    fn draw_line<B: Brush + ?Sized>(&self, start: metrics::Point2F, end: metrics::Point2F, brush: &B, line_width: f32) -> &Self
     {
-        unsafe { (*self.as_rt_handle()).DrawLine(*transmute_safe(&start), *transmute_safe(&end), brush.as_raw_brush(), 1.0, null_mut()) };
+        unsafe { (*self.as_rt_handle()).DrawLine(*transmute_safe(&start), *transmute_safe(&end), brush.as_raw_brush(), line_width, null_mut()) };
         self
     }
     /// レイアウト済みテキストの描画
