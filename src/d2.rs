@@ -180,6 +180,14 @@ pub trait RenderTarget
         unsafe { (*self.as_rt_handle()).DrawTextLayout(*transmute_safe(&p), layout.as_raw_handle() as _, brush.as_raw_brush(), D2D1_DRAW_TEXT_OPTIONS_NONE) };
         self
     }
+    /// テキストの描画
+    fn draw_raw_text<S: UnivString + ?Sized, B: Brush + ?Sized>(&self, r: &metrics::Rect2F, text: &S, format: &dwrite::TextFormat, brush: &B) -> &Self
+    {
+        let tw = text.to_wcstr();
+        unsafe { (*self.as_rt_handle()).DrawText(tw.as_ptr(), tw.len() as _, format.as_raw_handle(), transmute_safe(r), brush.as_raw_brush(),
+            D2D1_DRAW_TEXT_OPTIONS_NONE, DWRITE_MEASURING_MODE_NATURAL) };
+        self
+    }
 
     /// ビットマップを描く
     fn draw_bitmap(&self, bmp: &Bitmap, rect: &Rect2F) -> &Self
