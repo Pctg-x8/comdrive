@@ -382,6 +382,11 @@ pub enum Gamma { Linear = D2D1_GAMMA_1_0 as _, SRGB = D2D1_GAMMA_2_2 as _ }
 #[repr(C)] #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExtendMode { Clamp = D2D1_EXTEND_MODE_CLAMP as _, Wrap = D2D1_EXTEND_MODE_WRAP as _, Mirror = D2D1_EXTEND_MODE_MIRROR as _ }
 
+impl SolidColorBrush
+{
+    pub fn set_color(&self, col: &ColorF) { unsafe { (*self.0).SetColor(col); } }
+}
+
 /// Driver class for ID2D1PathGeometry
 pub struct PathGeometry(*mut ID2D1PathGeometry);
 impl Factory
