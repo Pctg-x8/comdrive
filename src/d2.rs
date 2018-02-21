@@ -128,16 +128,19 @@ pub trait RenderTarget
     fn clear<C: AsRef<ColorF> + ?Sized>(&self, color: &C) -> &Self { unsafe { (*self.as_rt_handle()).Clear(color.as_ref()) }; self }
 
     /// 矩形を塗りつぶし
+    #[deprecated = "use overrided version: fill<Rect2F>(...)"]
     fn fill_rect<B: Brush + ?Sized, R: AsRef<D2D1_RECT_F> + ?Sized>(&self, area: &R, brush: &B) -> &Self
     {
         unsafe { (*self.as_rt_handle()).FillRectangle(area.as_ref(), brush.as_raw_brush()) }; self
     }
     /// 矩形枠線
+    #[deprecated = "use overrided version: draw<Rect2F>(...)"]
     fn draw_rect<B: Brush + ?Sized, R: AsRef<D2D1_RECT_F> + ?Sized>(&self, area: &R, brush: &B) -> &Self
     {
         unsafe { (*self.as_rt_handle()).DrawRectangle(area.as_ref(), brush.as_raw_brush(), 1.0, null_mut()) }; self
     }
     /// 楕円
+    #[deprecated = "use overrided version: fill<Ellipse>(...)"]
     fn fill_ellipse<B: Brush + ?Sized>(&self, shape: &Ellipse, brush: &B) -> &Self
     {
         unsafe { (*self.as_rt_handle()).FillEllipse(shape, brush.as_raw_brush()); } self
@@ -153,7 +156,7 @@ pub trait RenderTarget
         unsafe { shape.fill(&mut *self.as_rt_handle(), brush); } self
     }
     /// 線を引く
-    #[deprecated]
+    #[deprecated = "use overrided version: draw<Point2F .. Point2F>(...)"]
     fn draw_line<B: Brush + ?Sized, P1, P2>(&self, start: &P1, end: &P2, brush: &B, line_width: f32) -> &Self
         where P1: AsRef<D2D1_POINT_2F> + ?Sized, P2: AsRef<D2D1_POINT_2F> + ?Sized
     {
@@ -233,8 +236,8 @@ pub trait Shape
 }
 impl Shape for Rect2F
 {
-    fn draw<B: Brush + ?Sized>(&self, p_rt: &mut ID2D1RenderTarget, brush: &B, line_width: f32) { unsafe { p_rt.DrawRectangle(transmute_safe(self), brush.as_raw_brush(), line_width, null_mut()); } }
-    fn fill<B: Brush + ?Sized>(&self, p_rt: &mut ID2D1RenderTarget, brush: &B) { unsafe { p_rt.FillRectangle(transmute_safe(self), brush.as_raw_brush()); } }
+    fn draw<B: Brush + ?Sized>(&self, p_rt: &mut ID2D1RenderTarget, brush: &B, line_width: f32) { unsafe { p_rt.DrawRectangle(self.as_ref(), brush.as_raw_brush(), line_width, null_mut()); } }
+    fn fill<B: Brush + ?Sized>(&self, p_rt: &mut ID2D1RenderTarget, brush: &B) { unsafe { p_rt.FillRectangle(self.as_ref(), brush.as_raw_brush()); } }
 }
 impl Shape for Ellipse
 {
@@ -286,7 +289,7 @@ impl DeviceContext
     pub fn draw_effected<E: Effect + ?Sized, P: AsRef<D2D1_POINT_2F> + ?Sized>(&self, offs: &P, fx: &E) -> &Self { self.draw(offs, &fx.get_output()) }
 }
 /// Driver object for ID2D1Bitmap(Context bound object)
-pub struct Bitmap(*mut ID2D1Bitmap); HandleWrapper!(for Bitmap[ID2D1Bitmap]);
+pub struct Bitmap(*mut ID2D1Bitmap); HandleWrapper!(for Bitmap[ID2D1Bitmap] + FromRawHandle);
 impl DeviceContext
 {
     /// Receive Converted Pixels
@@ -302,7 +305,7 @@ pub enum RenderableBitmapSource<'s>
     FromDxgiSurface(&'s dxgi::SurfaceChild), New(Size2U)
 }
 /// Driver object for ID2D1Bitmap1
-pub struct Bitmap1(*mut ID2D1Bitmap1); HandleWrapper!(for Bitmap1[ID2D1Bitmap1]);
+pub struct Bitmap1(*mut ID2D1Bitmap1); HandleWrapper!(for Bitmap1[ID2D1Bitmap1] + FromRawHandle);
 impl DeviceContext
 {
     /// Create Bitmap for RenderTarget
@@ -349,16 +352,16 @@ impl Image for Bitmap1 { fn as_raw_image(&self) -> *mut ID2D1Image { self.0 as _
 /// Driver object for ID2D1Brush
 pub trait Brush { fn as_raw_brush(&self) -> *mut ID2D1Brush; }
 /// Driver object for ID2D1SolidColorBrush
-pub struct SolidColorBrush(*mut ID2D1SolidColorBrush); HandleWrapper!(for SolidColorBrush[ID2D1SolidColorBrush]);
+pub struct SolidColorBrush(*mut ID2D1SolidColorBrush); HandleWrapper!(for SolidColorBrush[ID2D1SolidColorBrush] + FromRawHandle);
 /// Driver object for ID2D1LinearGradientBrush
-pub struct LinearGradientBrush(*mut ID2D1LinearGradientBrush); HandleWrapper!(for LinearGradientBrush[ID2D1LinearGradientBrush]);
+pub struct LinearGradientBrush(*mut ID2D1LinearGradientBrush); HandleWrapper!(for LinearGradientBrush[ID2D1LinearGradientBrush] + FromRawHandle);
 /// Driver object for ID2D1RadialGradientBrush
-pub struct RadialGradientBrush(*mut ID2D1RadialGradientBrush); HandleWrapper!(for RadialGradientBrush[ID2D1RadialGradientBrush]);
+pub struct RadialGradientBrush(*mut ID2D1RadialGradientBrush); HandleWrapper!(for RadialGradientBrush[ID2D1RadialGradientBrush] + FromRawHandle);
 impl Brush for SolidColorBrush { fn as_raw_brush(&self) -> *mut ID2D1Brush { self.0 as _ } }
 impl Brush for LinearGradientBrush { fn as_raw_brush(&self) -> *mut ID2D1Brush { self.0 as _ } }
 impl Brush for RadialGradientBrush { fn as_raw_brush(&self) -> *mut ID2D1Brush { self.0 as _ } }
 /// Driver object for ID2D1GradientStopCollection
-pub struct GradientStopCollection(*mut ID2D1GradientStopCollection); HandleWrapper!(for GradientStopCollection[ID2D1GradientStopCollection]);
+pub struct GradientStopCollection(*mut ID2D1GradientStopCollection); HandleWrapper!(for GradientStopCollection[ID2D1GradientStopCollection] + FromRawHandle);
 #[repr(C)] #[derive(Clone)]
 pub struct GradientStop(pub f32, pub ColorF);
 impl AsRef<D2D1_GRADIENT_STOP> for GradientStop { fn as_ref(&self) -> &D2D1_GRADIENT_STOP { unsafe { std::mem::transmute(self) } } }
@@ -373,7 +376,7 @@ impl SolidColorBrush
 }
 
 /// Driver class for ID2D1PathGeometry
-pub struct PathGeometry(*mut ID2D1PathGeometry); HandleWrapper!(for PathGeometry[ID2D1PathGeometry]);
+pub struct PathGeometry(*mut ID2D1PathGeometry); HandleWrapper!(for PathGeometry[ID2D1PathGeometry] + FromRawHandle);
 impl Factory
 {
     pub fn new_path_geometry(&self) -> IOResult<PathGeometry>
@@ -383,7 +386,7 @@ impl Factory
     }
 }
 /// Driver class for ID2D1GeometrySink
-pub struct GeometrySink(*mut ID2D1GeometrySink); HandleWrapper!(for GeometrySink[ID2D1GeometrySink]);
+pub struct GeometrySink(*mut ID2D1GeometrySink); HandleWrapper!(for GeometrySink[ID2D1GeometrySink] + FromRawHandle);
 impl PathGeometry
 {
     pub fn open(&self) -> IOResult<GeometrySink>
@@ -460,7 +463,7 @@ impl GeometrySegment for D2D1_QUADRATIC_BEZIER_SEGMENT
 }
 
 /// Driver class for ID2D1GaussianBlurEffect
-pub struct GaussianBlurEffect(*mut ID2D1Effect); HandleWrapper!(for GaussianBlurEffect[ID2D1Effect]);
+pub struct GaussianBlurEffect(*mut ID2D1Effect); HandleWrapper!(for GaussianBlurEffect[ID2D1Effect] + FromRawHandle);
 impl DeviceContext
 {
     /// Create Gaussian Blur Effect
