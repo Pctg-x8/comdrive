@@ -13,19 +13,29 @@ pub enum FontStyle
     None = DWRITE_FONT_STYLE_NORMAL as _, Oblique = DWRITE_FONT_STYLE_OBLIQUE as _, Italic = DWRITE_FONT_STYLE_ITALIC as _
 }
 
-/// Driver class for IDWriteFactory
-pub struct Factory(*mut IDWriteFactory);
-impl AsIUnknown for Factory { fn as_iunknown(&self) -> *mut IUnknown { self.0 as _ } }
-impl AsRawHandle<IDWriteFactory> for Factory { fn as_raw_handle(&self) -> *mut IDWriteFactory { self.0 } }
-impl Handle for Factory
+macro_rules! HandleWrapper
 {
-    type RawType = IDWriteFactory;
-    fn query_interface<Q: Handle>(&self) -> IOResult<Q> where Q: FromRawHandle<<Q as Handle>::RawType>
+    (for $t: ident[$i: ty]) =>
     {
-        let mut handle: *mut Q::RawType = std::ptr::null_mut();
-        unsafe { (*self.0).QueryInterface(&Q::RawType::uuidof(), std::mem::transmute(&mut handle)) }.to_result_with(|| unsafe { Q::from_raw_handle(handle) })
+        impl AsIUnknown for $t { fn as_iunknown(&self) -> *mut IUnknown { self.0 as _ } }
+        impl AsRawHandle<$i> for $t { fn as_raw_handle(&self) -> *mut $i { self.0 } }
+        impl Handle for $t
+        {
+            type RawType = $i;
+            fn query_interface<Q: Handle>(&self) -> IOResult<Q> where Q: FromRawHandle<<Q as Handle>::RawType>
+            {
+                let mut handle = std::ptr::null_mut();
+                unsafe { (*self.0).QueryInterface(&Q::RawType::uuidof(), &mut handle).to_result_with(|| Q::from_raw_handle(handle as _)) }
+            }
+        }
+        // Refcounters
+        AutoRemover!(for $t[$i]);
+        impl Clone for $t { fn clone(&self) -> Self { unsafe { (*self.0).AddRef() }; $t(self.0) } }
     }
 }
+
+/// Driver class for IDWriteFactory
+pub struct Factory(*mut IDWriteFactory); HandleWrapper!(for Factory[IDWriteFactory]);
 impl FromRawHandle<IDWriteFactory> for Factory { unsafe fn from_raw_handle(h: *mut IDWriteFactory) -> Self { Factory(h) } }
 impl Factory
 {
@@ -33,25 +43,10 @@ impl Factory
     pub fn new() -> IOResult<Self>
     {
         let mut handle = std::ptr::null_mut();
-        unsafe { DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, &IDWriteFactory::uuidof(), &mut handle) }
-            .to_result_with(|| Factory(handle as _))
+        unsafe { DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, &IDWriteFactory::uuidof(), &mut handle).to_result_with(|| Factory(handle as _)) }
     }
 }
 
-/// Driver object for IDWriteTextFormat
-pub struct TextFormat(*mut IDWriteTextFormat);
-impl AsIUnknown for TextFormat { fn as_iunknown(&self) -> *mut IUnknown { self.0 as _ } }
-impl AsRawHandle<IDWriteTextFormat> for TextFormat { fn as_raw_handle(&self) -> *mut IDWriteTextFormat { self.0 } }
-impl Handle for TextFormat
-{
-    type RawType = IDWriteTextFormat;
-    fn query_interface<Q: Handle>(&self) -> IOResult<Q> where Q: FromRawHandle<<Q as Handle>::RawType>
-    {
-        let mut handle: *mut Q::RawType = std::ptr::null_mut();
-        unsafe { (*self.0).QueryInterface(&Q::RawType::uuidof(), std::mem::transmute(&mut handle)) }.to_result_with(|| unsafe { Q::from_raw_handle(handle) })
-    }
-}
-impl FromRawHandle<IDWriteTextFormat> for TextFormat { unsafe fn from_raw_handle(h: *mut IDWriteTextFormat) -> Self { TextFormat(h) } }
 pub struct FontOptions
 {
     pub weight: DWRITE_FONT_WEIGHT, pub style: FontStyle, pub stretch: DWRITE_FONT_STRETCH
@@ -63,6 +58,10 @@ impl Default for FontOptions
         FontOptions { weight: DWRITE_FONT_WEIGHT_NORMAL, style: FontStyle::None, stretch: DWRITE_FONT_STRETCH_NORMAL }
     }
 }
+
+/// Driver object for IDWriteTextFormat
+pub struct TextFormat(*mut IDWriteTextFormat); HandleWrapper!(for TextFormat[IDWriteTextFormat]);
+impl FromRawHandle<IDWriteTextFormat> for TextFormat { unsafe fn from_raw_handle(h: *mut IDWriteTextFormat) -> Self { TextFormat(h) } }
 impl Factory
 {
     /// Create Text Format
@@ -76,18 +75,7 @@ impl Factory
 }
 
 /// Driver object for IDWriteTextLayout1
-pub struct TextLayout(*mut IDWriteTextLayout1);
-impl AsIUnknown for TextLayout { fn as_iunknown(&self) -> *mut IUnknown { self.0 as _ } }
-impl AsRawHandle<IDWriteTextLayout1> for TextLayout { fn as_raw_handle(&self) -> *mut IDWriteTextLayout1 { self.0 } }
-impl Handle for TextLayout
-{
-    type RawType = IDWriteTextLayout1;
-    fn query_interface<Q: Handle>(&self) -> IOResult<Q> where Q: FromRawHandle<<Q as Handle>::RawType>
-    {
-        let mut handle: *mut Q::RawType = std::ptr::null_mut();
-        unsafe { (*self.0).QueryInterface(&Q::RawType::uuidof(), std::mem::transmute(&mut handle)) }.to_result_with(|| unsafe { Q::from_raw_handle(handle) })
-    }
-}
+pub struct TextLayout(*mut IDWriteTextLayout1); HandleWrapper!(for TextLayout[IDWriteTextLayout1]);
 impl FromRawHandle<IDWriteTextLayout1> for TextLayout { unsafe fn from_raw_handle(h: *mut IDWriteTextLayout1) -> Self { TextLayout(h) } }
 impl Factory
 {
@@ -129,12 +117,12 @@ impl TextLayout
     pub fn set_character_spacing(&self, space: f32) -> IOResult<()>
     {
         unsafe { (*self.0).SetCharacterSpacing(space / 2.0, space / 2.0, space,
-            DWRITE_TEXT_RANGE { startPosition: 0, length: std::u32::MAX }) }.to_result(())
+            DWRITE_TEXT_RANGE { startPosition: 0, length: std::u32::MAX }).checked() }
     }
 }
 
 /// フォントコレクション
-pub struct FontCollection(*mut IDWriteFontCollection);
+pub struct FontCollection(*mut IDWriteFontCollection); HandleWrapper!(for FontCollection[IDWriteFontCollection]);
 impl Factory
 {
     pub fn system_font_collection(&self, check_for_updates: bool) -> IOResult<FontCollection>
@@ -163,7 +151,7 @@ impl Factory
 }
 
 /// フォントファイル
-pub struct FontFile(*mut IDWriteFontFile);
+pub struct FontFile(*mut IDWriteFontFile); HandleWrapper!(for FontFile[IDWriteFontFile]);
 impl Factory
 {
     pub fn new_font_file_reference<WPath: ::UnivString + ?Sized>(&self, path: &WPath) -> IOResult<FontFile>
@@ -172,9 +160,3 @@ impl Factory
         unsafe { (*self.0).CreateFontFileReference(path.to_wcstr().as_ptr(), std::ptr::null(), &mut handle) }.to_result_with(|| FontFile(handle))
     }
 }
-impl AsRawHandle<IDWriteFontFile> for FontFile { fn as_raw_handle(&self) -> *mut IDWriteFontFile { self.0 } }
-
-AutoRemover!(for Factory[IDWriteFactory], TextFormat[IDWriteTextFormat], TextLayout[IDWriteTextLayout], FontFile[IDWriteFontFile]);
-impl Clone for Factory { fn clone(&self) -> Self { unsafe { (*self.0).AddRef() }; Factory(self.0) } }
-impl Clone for TextFormat { fn clone(&self) -> Self { unsafe { (*self.0).AddRef() }; TextFormat(self.0) } }
-impl Clone for TextLayout { fn clone(&self) -> Self { unsafe { (*self.0).AddRef() }; TextLayout(self.0) } }
