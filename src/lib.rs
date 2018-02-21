@@ -31,7 +31,7 @@ impl ResultCarrier for HRESULT
     fn checked(self) -> IOResult<()> { if SUCCEEDED(self) { Ok(()) } else { Err(IOError::from_raw_os_error(self)) } }
 }
 
-use std::ffi::CStr;
+use std::ffi::{CStr, CString};
 use std::ops::Deref;
 /// Universal String Trait(convertable to wide string)
 pub trait UnivString
@@ -59,17 +59,16 @@ impl UnivString for CStr
 {
     fn to_wcstr(&self) -> Cow<WideCStr> { WideCString::from_str(self.to_string_lossy().deref()).unwrap().into() }
 }
-impl UnivString for WideCStr
-{
-    fn to_wcstr(&self) -> Cow<WideCStr> { self.into() }
-}
+impl UnivString for CString { fn to_wcstr(&self) -> Cow<WideCStr> { self.as_c_str().to_wcstr() } }
+impl UnivString for WideCStr { fn to_wcstr(&self) -> Cow<WideCStr> { self.into() } }
+impl UnivString for WideCString { fn to_wcstr(&self) -> Cow<WideCStr> { self.as_wide_c_str().into() } }
 
 /// IUnknownにへんかんできることを保証(AsRawHandle<IUnknown>の特殊化)
 pub trait AsIUnknown { fn as_iunknown(&self) -> *mut IUnknown; }
 /// 特定のハンドルポインタに変換できることを保証
 pub trait AsRawHandle<I: Interface> { fn as_raw_handle(&self) -> *mut I; }
 /// 特定のインターフェイスハンドルであり、別インターフェイスをクエリすることができる
-pub trait Handle : AsRawHandle<<Self as Handle>::RawType> + AsIUnknown + Drop
+pub trait Handle : AsRawHandle<<Self as Handle>::RawType> + AsIUnknown
 {
     type RawType : Interface;
     fn query_interface<Q: Handle>(&self) -> IOResult<Q> where Q: FromRawHandle<<Q as Handle>::RawType>;
