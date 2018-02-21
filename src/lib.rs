@@ -93,6 +93,31 @@ macro_rules! AutoRemover
         })*
     }
 }
+macro_rules! HandleWrapper
+{
+    (for $t: ident[$i: ty]) =>
+    {
+        impl AsIUnknown for $t { fn as_iunknown(&self) -> *mut IUnknown { self.0 as _ } }
+        impl AsRawHandle<$i> for $t { fn as_raw_handle(&self) -> *mut $i { self.0 } }
+        impl Handle for $t
+        {
+            type RawType = $i;
+            fn query_interface<Q: Handle>(&self) -> IOResult<Q> where Q: FromRawHandle<<Q as Handle>::RawType>
+            {
+                let mut handle = std::ptr::null_mut();
+                unsafe { (*self.0).QueryInterface(&Q::RawType::uuidof(), &mut handle).to_result_with(|| Q::from_raw_handle(handle as _)) }
+            }
+        }
+        // Refcounters
+        AutoRemover!(for $t[$i]);
+        impl Clone for $t { fn clone(&self) -> Self { unsafe { (*self.0).AddRef() }; $t(self.0) } }
+    };
+    (for $t: ident[$i: ty] + FromRawHandle) =>
+    {
+        HandleWrapper!(for $t[$i]);
+        impl FromRawHandle<$i> for $t { unsafe fn from_raw_handle(ptr: *mut $i) -> Self { $t(ptr) } }
+    }
+}
 
 /// IUnknown Receiver
 pub struct Unknown(*mut IUnknown);

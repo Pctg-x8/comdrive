@@ -18,7 +18,7 @@ pub enum AntialiasMode
 }
 
 /// Driver object for ID2D1Factory
-pub struct Factory(*mut ID2D1Factory);
+pub struct Factory(*mut ID2D1Factory); HandleWrapper!(for Factory[ID2D1Factory] + FromRawHandle);
 impl Factory
 {
     /// Create
@@ -34,8 +34,7 @@ impl Factory
 }
 
 /// Driver object for ID2D1Device
-pub struct Device(*mut ID2D1Device);
-impl AsIUnknown for Device { fn as_iunknown(&self) -> *mut IUnknown { self.0 as _ } }
+pub struct Device(*mut ID2D1Device); HandleWrapper!(for Device[ID2D1Device] + FromRawHandle);
 impl Device
 {
     /// Create on Direct3D Device
@@ -48,10 +47,7 @@ impl Device
             options: D2D1_DEVICE_CONTEXT_OPTIONS_NONE
         };
         let mut handle = std::ptr::null_mut();
-        dev3.parent().and_then(|dx| unsafe
-        {
-            D2D1CreateDevice(dx.as_raw_handle() as _, &cp, &mut handle)
-        }.to_result_with(|| Device(handle)))
+        unsafe { D2D1CreateDevice(dev3.parent()?.as_raw_handle() as _, &cp, &mut handle).to_result_with(|| Device(handle)) }
     }
     pub fn factory(&self) -> Factory
     {
@@ -64,7 +60,7 @@ impl Device
 pub const TRANSPARENT_COLOR: ColorF = ColorF { r: 0.0, g: 0.0, b: 0.0, a: 0.0 };
 
 /// Driver object for ID2D1HwndRenderTarget
-pub struct HwndRenderTarget(*mut ID2D1HwndRenderTarget);
+pub struct HwndRenderTarget(*mut ID2D1HwndRenderTarget); HandleWrapper!(for HwndRenderTarget[ID2D1HwndRenderTarget] + FromRawHandle);
 impl Factory
 {
     pub fn new_hwnd_render_target(&self, target: HWND) -> IOResult<HwndRenderTarget>
@@ -82,38 +78,26 @@ impl Factory
             presentOptions: D2D1_PRESENT_OPTIONS_NONE
         };
         let mut handle = std::ptr::null_mut();
-        unsafe { (*self.0).CreateHwndRenderTarget(&rtprops, &hwrtprops, &mut handle) }.to_result_with(|| HwndRenderTarget(handle))
+        unsafe { (*self.0).CreateHwndRenderTarget(&rtprops, &hwrtprops, &mut handle) .to_result_with(|| HwndRenderTarget(handle)) }
     }
 }
 impl HwndRenderTarget
 {
-    pub fn resize<S: metrics::MarkForSameBits<D2D1_SIZE_U>>(&self, new_size: &S) -> IOResult<()>
+    pub fn resize<S: AsRef<D2D1_SIZE_U>>(&self, new_size: &S) -> IOResult<()>
     {
-        unsafe { (*self.0).Resize(transmute_safe(new_size)) }.to_result(())
+        unsafe { (*self.0).Resize(new_size.as_ref()).checked() }
     }
 }
 
 /// Driver object for ID2D1DeviceContext
-pub struct DeviceContext(*mut ID2D1DeviceContext);
-impl Handle for DeviceContext
-{
-    type RawType = ID2D1DeviceContext;
-    fn query_interface<Q: Handle>(&self) -> IOResult<Q> where Q: FromRawHandle<<Q as Handle>::RawType>
-    {
-        let mut handle: *mut Q::RawType = std::ptr::null_mut();
-        unsafe { (*self.0).QueryInterface(&Q::RawType::uuidof(), std::mem::transmute(&mut handle)) }.to_result_with(|| unsafe { Q::from_raw_handle(handle) })
-    }
-}
-impl AsRawHandle<ID2D1DeviceContext> for DeviceContext { fn as_raw_handle(&self) -> *mut ID2D1DeviceContext { self.0 } }
-impl FromRawHandle<ID2D1DeviceContext> for DeviceContext { unsafe fn from_raw_handle(h: *mut ID2D1DeviceContext) -> Self { DeviceContext(h) } }
-impl AsIUnknown for DeviceContext { fn as_iunknown(&self) -> *mut IUnknown { self.0 as _ } }
+pub struct DeviceContext(*mut ID2D1DeviceContext); HandleWrapper!(for DeviceContext[ID2D1DeviceContext] + FromRawHandle);
 impl Device
 {
-    pub fn new_context(&self) -> IOResult<DeviceContext>
+    pub fn new_context(&self, enable_mt_optimizations: bool) -> IOResult<DeviceContext>
     {
         let mut handle = std::ptr::null_mut();
-        unsafe { (*self.0).CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_ENABLE_MULTITHREADED_OPTIMIZATIONS, &mut handle) }
-            .to_result_with(|| DeviceContext(handle))
+        let opts = if enable_mt_optimizations { D2D1_DEVICE_CONTEXT_OPTIONS_ENABLE_MULTITHREADED_OPTIMIZATIONS } else { 0 };
+        unsafe { (*self.0).CreateDeviceContext(opts, &mut handle).to_result_with(|| DeviceContext(handle)) }
     }
 }
 
@@ -126,32 +110,32 @@ pub trait RenderTarget
     /// 描画開始
     fn begin_draw(&self) -> &Self { unsafe { (*self.as_rt_handle()).BeginDraw() }; self }
     /// 描画終了
-    fn end_draw(&self) -> IOResult<()> { unsafe { (*self.as_rt_handle()).EndDraw(null_mut(), null_mut()) }.checked() }
+    fn end_draw(&self) -> IOResult<()> { unsafe { (*self.as_rt_handle()).EndDraw(null_mut(), null_mut()).checked() } }
     /// クリップ範囲の設定
-    fn push_aa_clip(&self, rect: &Rect2F, aliasing: AntialiasMode) -> &Self
+    fn push_aa_clip<Rect: AsRef<D2D1_RECT_F> + ?Sized>(&self, rect: &Rect, aliasing: AntialiasMode) -> &Self
     {
-        unsafe { (*self.as_rt_handle()).PushAxisAlignedClip(transmute_safe(rect), aliasing as _) }; self
+        unsafe { (*self.as_rt_handle()).PushAxisAlignedClip(rect.as_ref(), aliasing as _) }; self
     }
     /// クリップ範囲を解除
     fn pop_aa_clip(&self) -> &Self { unsafe { (*self.as_rt_handle()).PopAxisAlignedClip() }; self }
     
     /// トランスフォーム行列をセット
-    fn set_transform<Matrix: AsRef<D2D1_MATRIX_3X2_F>>(&self, matrix: &Matrix) -> &Self
+    fn set_transform<Matrix: AsRef<D2D1_MATRIX_3X2_F> + ?Sized>(&self, matrix: &Matrix) -> &Self
     {
         unsafe { (*self.as_rt_handle()).SetTransform(matrix.as_ref()) }; self
     }
     /// 描画ターゲットの中身を消去
-    fn clear(&self, color: &ColorF) -> &Self { unsafe { (*self.as_rt_handle()).Clear(color) }; self }
+    fn clear<C: AsRef<ColorF> + ?Sized>(&self, color: &C) -> &Self { unsafe { (*self.as_rt_handle()).Clear(color.as_ref()) }; self }
 
     /// 矩形を塗りつぶし
-    fn fill_rect<B: Brush + ?Sized>(&self, area: &Rect2F, brush: &B) -> &Self
+    fn fill_rect<B: Brush + ?Sized, R: AsRef<D2D1_RECT_F> + ?Sized>(&self, area: &R, brush: &B) -> &Self
     {
-        unsafe { (*self.as_rt_handle()).FillRectangle(transmute_safe(area), brush.as_raw_brush()) }; self
+        unsafe { (*self.as_rt_handle()).FillRectangle(area.as_ref(), brush.as_raw_brush()) }; self
     }
     /// 矩形枠線
-    fn draw_rect<B: Brush + ?Sized>(&self, area: &Rect2F, brush: &B) -> &Self
+    fn draw_rect<B: Brush + ?Sized, R: AsRef<D2D1_RECT_F> + ?Sized>(&self, area: &R, brush: &B) -> &Self
     {
-        unsafe { (*self.as_rt_handle()).DrawRectangle(transmute_safe(area), brush.as_raw_brush(), 1.0, null_mut()) }; self
+        unsafe { (*self.as_rt_handle()).DrawRectangle(area.as_ref(), brush.as_raw_brush(), 1.0, null_mut()) }; self
     }
     /// 楕円
     fn fill_ellipse<B: Brush + ?Sized>(&self, shape: &Ellipse, brush: &B) -> &Self
@@ -169,38 +153,75 @@ pub trait RenderTarget
         unsafe { shape.fill(&mut *self.as_rt_handle(), brush); } self
     }
     /// 線を引く
-    fn draw_line<B: Brush + ?Sized>(&self, start: metrics::Point2F, end: metrics::Point2F, brush: &B, line_width: f32) -> &Self
+    #[deprecated]
+    fn draw_line<B: Brush + ?Sized, P1, P2>(&self, start: &P1, end: &P2, brush: &B, line_width: f32) -> &Self
+        where P1: AsRef<D2D1_POINT_2F> + ?Sized, P2: AsRef<D2D1_POINT_2F> + ?Sized
     {
-        unsafe { (*self.as_rt_handle()).DrawLine(*transmute_safe(&start), *transmute_safe(&end), brush.as_raw_brush(), line_width, null_mut()) };
+        unsafe { (*self.as_rt_handle()).DrawLine(*start.as_ref(), *end.as_ref(), brush.as_raw_brush(), line_width, null_mut()) };
         self
     }
     /// レイアウト済みテキストの描画
-    fn draw_text<B: Brush + ?Sized>(&self, p: metrics::Point2F, layout: &dwrite::TextLayout, brush: &B) -> &Self
+    fn draw_text<B: Brush + ?Sized, P: AsRef<D2D1_POINT_2F> + ?Sized>(&self, p: &P, layout: &dwrite::TextLayout, brush: &B) -> &Self
     {
-        unsafe { (*self.as_rt_handle()).DrawTextLayout(*transmute_safe(&p), layout.as_raw_handle() as _, brush.as_raw_brush(), D2D1_DRAW_TEXT_OPTIONS_NONE) };
+        unsafe { (*self.as_rt_handle()).DrawTextLayout(*p.as_ref(), layout.as_raw_handle() as _, brush.as_raw_brush(), D2D1_DRAW_TEXT_OPTIONS_NONE) };
         self
     }
     /// テキストの描画
-    fn draw_raw_text<S: UnivString + ?Sized, B: Brush + ?Sized>(&self, r: &metrics::Rect2F, text: &S, format: &dwrite::TextFormat, brush: &B) -> &Self
+    fn draw_raw_text<S: UnivString + ?Sized, B: Brush + ?Sized, R>(&self, r: &R, text: &S, format: &dwrite::TextFormat, brush: &B) -> &Self
+        where R: AsRef<D2D1_RECT_F> + ?Sized
     {
         let tw = text.to_wcstr();
-        unsafe { (*self.as_rt_handle()).DrawText(tw.as_ptr(), tw.len() as _, format.as_raw_handle(), transmute_safe(r), brush.as_raw_brush(),
-            D2D1_DRAW_TEXT_OPTIONS_NONE, DWRITE_MEASURING_MODE_NATURAL) };
+        unsafe
+        {
+            (*self.as_rt_handle()).DrawText(tw.as_ptr(), tw.len() as _, format.as_raw_handle(), r.as_ref(), brush.as_raw_brush(), D2D1_DRAW_TEXT_OPTIONS_NONE, DWRITE_MEASURING_MODE_NATURAL)
+        };
         self
     }
 
     /// ビットマップを描く
-    fn draw_bitmap(&self, bmp: &Bitmap, rect: &Rect2F) -> &Self
+    fn draw_bitmap<R: AsRef<D2D1_RECT_F> + ?Sized>(&self, bmp: &Bitmap, rect: &R) -> &Self
     {
-        unsafe { (*self.as_rt_handle()).DrawBitmap(bmp.0, transmute_safe(rect), 1.0, D2D1_INTERPOLATION_MODE_LINEAR, null()) };
+        unsafe { (*self.as_rt_handle()).DrawBitmap(bmp.0, rect.as_ref(), 1.0, D2D1_INTERPOLATION_MODE_LINEAR, null()) };
         self
     }
 
     /// ブラシの作成
-    fn new_solid_color_brush(&self, col: &ColorF) -> IOResult<SolidColorBrush>
+    fn new_solid_color_brush<C: AsRef<D2D1_COLOR_F> + ?Sized>(&self, col: &C) -> IOResult<SolidColorBrush>
     {
         let mut handle = std::ptr::null_mut();
-        unsafe { (*self.as_rt_handle()).CreateSolidColorBrush(col, std::ptr::null(), &mut handle) }.to_result_with(|| SolidColorBrush(handle))
+        unsafe { (*self.as_rt_handle()).CreateSolidColorBrush(col.as_ref(), std::ptr::null(), &mut handle) }.to_result_with(|| SolidColorBrush(handle))
+    }
+    /// Create Linear Gradient Brush
+    fn new_linear_gradient_brush<P1, P2>(&self, from: &P1, to: &P2, stops: &GradientStopCollection) -> IOResult<LinearGradientBrush>
+        where P1: AsRef<D2D1_POINT_2F> + ?Sized, P2: AsRef<D2D1_POINT_2F> + ?Sized
+    {
+        let mut handle = std::ptr::null_mut();
+        let lb_props = D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES { startPoint: *from.as_ref(), endPoint: *to.as_ref() };
+        let brush_props = D2D1_BRUSH_PROPERTIES { opacity: 1.0, transform: Matrix3x2F::identity().unwrap() };
+        unsafe { (*self.as_rt_handle()).CreateLinearGradientBrush(&lb_props, &brush_props, stops.0, &mut handle).to_result_with(|| LinearGradientBrush(handle)) }
+    }
+    /// Create Radial Gradient Brush
+    fn new_radial_gradient_brush<P, S>(&self, center: &P, radius: &S, stops: &GradientStopCollection) -> IOResult<RadialGradientBrush>
+        where P: AsRef<D2D1_POINT_2F> + ?Sized, S: AsRef<D2D1_SIZE_F> + ?Sized
+    {
+        let mut handle = std::ptr::null_mut();
+        let rb_props = D2D1_RADIAL_GRADIENT_BRUSH_PROPERTIES
+        {
+            center: *center.as_ref(), radiusX: radius.as_ref().width, radiusY: radius.as_ref().height,
+            gradientOriginOffset: D2D1_POINT_2F { x: 0.0, y: 0.0 }
+        };
+        let brush_props = D2D1_BRUSH_PROPERTIES { opacity: 1.0, transform: Matrix3x2F::identity().unwrap() };
+        unsafe { (*self.as_rt_handle()).CreateRadialGradientBrush(&rb_props, &brush_props, stops.0, &mut handle).to_result_with(|| RadialGradientBrush(handle)) }
+    }
+    /// Create Gradient Stop Collection
+    fn new_gradient_stop_collection(&self, stops: &[GradientStop], gamma: Gamma, extend_mode: ExtendMode) -> IOResult<GradientStopCollection>
+    {
+        let mut handle = std::ptr::null_mut();
+        unsafe
+        {
+            (*self.as_rt_handle()).CreateGradientStopCollection(stops.as_ptr() as *const _, stops.len() as _, gamma as _, extend_mode as _, &mut handle)
+                .to_result_with(|| GradientStopCollection(handle))
+        }
     }
 }
 
@@ -219,6 +240,15 @@ impl Shape for Ellipse
 {
     fn draw<B: Brush + ?Sized>(&self, p_rt: &mut ID2D1RenderTarget, brush: &B, line_width: f32) { unsafe { p_rt.DrawEllipse(self, brush.as_raw_brush(), line_width, null_mut()); } }
     fn fill<B: Brush + ?Sized>(&self, p_rt: &mut ID2D1RenderTarget, brush: &B) { unsafe { p_rt.FillEllipse(self, brush.as_raw_brush()); } }
+}
+/// 線(start .. end)
+impl<P: AsRef<D2D1_POINT_2F>> Shape for ::std::ops::Range<P>
+{
+    fn draw<B: Brush + ?Sized>(&self, p_rt: &mut ID2D1RenderTarget, brush: &B, line_width: f32)
+    {
+        unsafe { p_rt.DrawLine(*self.start.as_ref(), *self.end.as_ref(), brush.as_raw_brush(), line_width, null_mut()); }
+    }
+    fn fill<B: Brush + ?Sized>(&self, p_rt: &mut ID2D1RenderTarget, brush: &B) { self.draw(p_rt, brush, 1.0) }
 }
 
 /// 垂線
@@ -247,19 +277,16 @@ impl RenderTarget for DeviceContext { fn as_rt_handle(&self) -> *mut ID2D1Render
 impl DeviceContext
 {
     /// Imageを描く
-    pub fn draw<IMG: Image>(&self, offs: metrics::Point2F, image: &IMG) -> &Self
+    pub fn draw<IMG: Image + ?Sized, P: AsRef<D2D1_POINT_2F> + ?Sized>(&self, offs: &P, image: &IMG) -> &Self
     {
-        unsafe { (*self.0).DrawImage(image.as_raw_image(), transmute_safe(&offs), std::ptr::null(), D2D1_INTERPOLATION_MODE_LINEAR, D2D1_COMPOSITE_MODE_SOURCE_OVER) };
+        unsafe { (*self.0).DrawImage(image.as_raw_image(), offs.as_ref(), std::ptr::null(), D2D1_INTERPOLATION_MODE_LINEAR, D2D1_COMPOSITE_MODE_SOURCE_OVER) };
         self
     }
     /// Effectを描く
-    pub fn draw_effected<E: Effect>(&self, offs: metrics::Point2F, fx: &E) -> &Self
-    {
-        self.draw(offs, &fx.get_output())
-    }
+    pub fn draw_effected<E: Effect + ?Sized, P: AsRef<D2D1_POINT_2F> + ?Sized>(&self, offs: &P, fx: &E) -> &Self { self.draw(offs, &fx.get_output()) }
 }
 /// Driver object for ID2D1Bitmap(Context bound object)
-pub struct Bitmap(*mut ID2D1Bitmap);
+pub struct Bitmap(*mut ID2D1Bitmap); HandleWrapper!(for Bitmap[ID2D1Bitmap]);
 impl DeviceContext
 {
     /// Receive Converted Pixels
@@ -275,7 +302,7 @@ pub enum RenderableBitmapSource<'s>
     FromDxgiSurface(&'s dxgi::SurfaceChild), New(Size2U)
 }
 /// Driver object for ID2D1Bitmap1
-pub struct Bitmap1(*mut ID2D1Bitmap1);
+pub struct Bitmap1(*mut ID2D1Bitmap1); HandleWrapper!(for Bitmap1[ID2D1Bitmap1]);
 impl DeviceContext
 {
     /// Create Bitmap for RenderTarget
@@ -286,7 +313,7 @@ impl DeviceContext
         {
             pixelFormat: D2D1_PIXEL_FORMAT { format, alphaMode: alpha_mode as _ },
             dpiX: 96.0, dpiY: 96.0, colorContext: std::ptr::null_mut(),
-            bitmapOptions: D2D1_BITMAP_OPTIONS_TARGET | if let &RenderableBitmapSource::FromDxgiSurface(_) = &src { D2D1_BITMAP_OPTIONS_CANNOT_DRAW } else { 0 }
+            bitmapOptions: D2D1_BITMAP_OPTIONS_TARGET | if let RenderableBitmapSource::FromDxgiSurface(_) = src { D2D1_BITMAP_OPTIONS_CANNOT_DRAW } else { 0 }
         };
         match src
         {
@@ -301,7 +328,7 @@ impl DeviceContext
         }.to_result_with(|| Bitmap1(handle))
     }
     /// Set Render Target
-    pub fn set_target<RT: Image>(&self, rt: &RT) -> &Self
+    pub fn set_target<RT: Image + ?Sized>(&self, rt: &RT) -> &Self
     {
         unsafe { (*self.0).SetTarget(rt.as_raw_image()) }; self
     }
@@ -322,61 +349,19 @@ impl Image for Bitmap1 { fn as_raw_image(&self) -> *mut ID2D1Image { self.0 as _
 /// Driver object for ID2D1Brush
 pub trait Brush { fn as_raw_brush(&self) -> *mut ID2D1Brush; }
 /// Driver object for ID2D1SolidColorBrush
-pub struct SolidColorBrush(*mut ID2D1SolidColorBrush);
+pub struct SolidColorBrush(*mut ID2D1SolidColorBrush); HandleWrapper!(for SolidColorBrush[ID2D1SolidColorBrush]);
 /// Driver object for ID2D1LinearGradientBrush
-pub struct LinearGradientBrush(*mut ID2D1LinearGradientBrush);
+pub struct LinearGradientBrush(*mut ID2D1LinearGradientBrush); HandleWrapper!(for LinearGradientBrush[ID2D1LinearGradientBrush]);
 /// Driver object for ID2D1RadialGradientBrush
-pub struct RadialGradientBrush(*mut ID2D1RadialGradientBrush);
-impl DeviceContext
-{
-    /// Create Solid Color Brush
-    pub fn new_solid_color_brush(&self, color: &ColorF) -> IOResult<SolidColorBrush>
-    {
-        let mut handle = std::ptr::null_mut();
-        unsafe { (*self.0).CreateSolidColorBrush(color, std::ptr::null(), &mut handle) }.to_result_with(|| SolidColorBrush(handle))
-    }
-    /// Create Linear Gradient Brush
-    pub fn new_linear_gradient_brush(&self, from: metrics::Point2F, to: metrics::Point2F, stops: &GradientStopCollection) -> IOResult<LinearGradientBrush>
-    {
-        let mut handle = std::ptr::null_mut();
-        let lb_props = D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES
-        {
-            startPoint: *transmute_safe(&from), endPoint: *transmute_safe(&to)
-        };
-        let brush_props = D2D1_BRUSH_PROPERTIES { opacity: 1.0, transform: Matrix3x2F::identity().unwrap() };
-        unsafe { (*self.0).CreateLinearGradientBrush(&lb_props, &brush_props, stops.0, &mut handle) }
-            .to_result_with(|| LinearGradientBrush(handle))
-    }
-    /// Create Radial Gradient Brush
-    pub fn new_radial_gradient_brush(&self, center: Point2F, radius: Size2F, stops: &GradientStopCollection) -> IOResult<RadialGradientBrush>
-    {
-        let mut handle = std::ptr::null_mut();
-        let rb_props = D2D1_RADIAL_GRADIENT_BRUSH_PROPERTIES
-        {
-            center: unsafe { std::mem::transmute_copy(&center) }, radiusX: radius.x(), radiusY: radius.y(),
-            gradientOriginOffset: D2D1_POINT_2F { x: 0.0, y: 0.0 }
-        };
-        let brush_props = D2D1_BRUSH_PROPERTIES { opacity: 1.0, transform: Matrix3x2F::identity().unwrap() };
-        unsafe { (*self.0).CreateRadialGradientBrush(&rb_props, &brush_props, stops.0, &mut handle) }.to_result_with(|| RadialGradientBrush(handle))
-    }
-}
+pub struct RadialGradientBrush(*mut ID2D1RadialGradientBrush); HandleWrapper!(for RadialGradientBrush[ID2D1RadialGradientBrush]);
 impl Brush for SolidColorBrush { fn as_raw_brush(&self) -> *mut ID2D1Brush { self.0 as _ } }
 impl Brush for LinearGradientBrush { fn as_raw_brush(&self) -> *mut ID2D1Brush { self.0 as _ } }
 impl Brush for RadialGradientBrush { fn as_raw_brush(&self) -> *mut ID2D1Brush { self.0 as _ } }
 /// Driver object for ID2D1GradientStopCollection
-pub struct GradientStopCollection(*mut ID2D1GradientStopCollection);
-impl DeviceContext
-{
-    /// Create Gradient Stop Collection
-    pub fn new_gradient_stop_collection(&self, stops: &[GradientStop], gamma: Gamma, extend_mode: ExtendMode) -> IOResult<GradientStopCollection>
-    {
-        let mut handle = std::ptr::null_mut();
-        unsafe { ((*(*self.0).lpVtbl).parent.CreateGradientStopCollection)(self.0 as _, stops.as_ptr() as *const _, stops.len() as _,
-            gamma as _, extend_mode as _, &mut handle) }.to_result_with(|| GradientStopCollection(handle))
-    }
-}
+pub struct GradientStopCollection(*mut ID2D1GradientStopCollection); HandleWrapper!(for GradientStopCollection[ID2D1GradientStopCollection]);
+#[repr(C)] #[derive(Clone)]
 pub struct GradientStop(pub f32, pub ColorF);
-unsafe impl MarkForSameBits<D2D1_GRADIENT_STOP> for GradientStop {}
+impl AsRef<D2D1_GRADIENT_STOP> for GradientStop { fn as_ref(&self) -> &D2D1_GRADIENT_STOP { unsafe { std::mem::transmute(self) } } }
 #[repr(C)] #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Gamma { Linear = D2D1_GAMMA_1_0 as _, SRGB = D2D1_GAMMA_2_2 as _ }
 #[repr(C)] #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -384,44 +369,44 @@ pub enum ExtendMode { Clamp = D2D1_EXTEND_MODE_CLAMP as _, Wrap = D2D1_EXTEND_MO
 
 impl SolidColorBrush
 {
-    pub fn set_color(&self, col: &ColorF) { unsafe { (*self.0).SetColor(col); } }
+    pub fn set_color<C: AsRef<D2D1_COLOR_F> + ?Sized>(&self, col: &C) { unsafe { (*self.0).SetColor(col.as_ref()); } }
 }
 
 /// Driver class for ID2D1PathGeometry
-pub struct PathGeometry(*mut ID2D1PathGeometry);
+pub struct PathGeometry(*mut ID2D1PathGeometry); HandleWrapper!(for PathGeometry[ID2D1PathGeometry]);
 impl Factory
 {
     pub fn new_path_geometry(&self) -> IOResult<PathGeometry>
     {
         let mut h = std::ptr::null_mut();
-        unsafe { (*self.0).CreatePathGeometry(&mut h) }.to_result_with(|| PathGeometry(h))
+        unsafe { (*self.0).CreatePathGeometry(&mut h).to_result_with(|| PathGeometry(h)) }
     }
 }
 /// Driver class for ID2D1GeometrySink
-pub struct GeometrySink(*mut ID2D1GeometrySink);
+pub struct GeometrySink(*mut ID2D1GeometrySink); HandleWrapper!(for GeometrySink[ID2D1GeometrySink]);
 impl PathGeometry
 {
     pub fn open(&self) -> IOResult<GeometrySink>
     {
         let mut h = std::ptr::null_mut();
-        unsafe { (*self.0).Open(&mut h) }.to_result_with(|| GeometrySink(h))
+        unsafe { (*self.0).Open(&mut h).to_result_with(|| GeometrySink(h)) }
     }
 }
 
 /// Geometry Segment
-pub trait GeometrySegment: Sized
+pub trait GeometrySegment
 {
     fn add_to(&self, sink: &GeometrySink);
-    fn add_multi(v: &[Self], sink: &GeometrySink);
+    fn add_multi(v: &[Self], sink: &GeometrySink) where Self: Sized;
 }
 impl GeometrySink
 {
-    pub fn begin_figure(&self, p: metrics::Point2F, fill: bool) -> &Self
+    pub fn begin_figure<P: AsRef<D2D1_POINT_2F> + ?Sized>(&self, p: &P, fill: bool) -> &Self
     {
         let fb = if fill { D2D1_FIGURE_BEGIN_FILLED } else { D2D1_FIGURE_BEGIN_HOLLOW };
-        unsafe { (*self.0).BeginFigure(*transmute_safe(&p), fb) }; self
+        unsafe { (*self.0).BeginFigure(*p.as_ref(), fb) }; self
     }
-    pub fn add<S: GeometrySegment>(&self, segment: &S) -> &Self
+    pub fn add<S: GeometrySegment + ?Sized>(&self, segment: &S) -> &Self
     {
         segment.add_to(self); self
     }
@@ -430,10 +415,7 @@ impl GeometrySink
         let fe = if close { D2D1_FIGURE_END_CLOSED } else { D2D1_FIGURE_END_OPEN };
         unsafe { (*self.0).EndFigure(fe) }; self
     }
-    pub fn close(&self) -> IOResult<()>
-    {
-        unsafe { (*self.0).Close() }.checked()
-    }
+    pub fn close(&self) -> IOResult<()> { unsafe { (*self.0).Close().checked() } }
 }
 pub use winapi::um::d2d1::{
     D2D1_POINT_2F as Point2F, D2D1_ARC_SEGMENT as ArcSegment,
@@ -457,73 +439,61 @@ impl GeometrySegment for D2D1_ARC_SEGMENT
 impl GeometrySegment for D2D1_BEZIER_SEGMENT
 {
     fn add_to(&self, sink: &GeometrySink) { unsafe { (*sink.0).AddBezier(self); } }
-    fn add_multi(v: &[Self], sink: &GeometrySink)
-    {
-        unsafe { (*sink.0).AddBeziers(v.as_ptr(), v.len() as _); }
-    }
+    fn add_multi(v: &[Self], sink: &GeometrySink) { unsafe { (*sink.0).AddBeziers(v.as_ptr(), v.len() as _); } }
 }
 /// Line
 impl GeometrySegment for D2D1_POINT_2F
 {
     fn add_to(&self, sink: &GeometrySink) { unsafe { (*sink.0).AddLine(*self); } }
-    fn add_multi(v: &[Self], sink: &GeometrySink)
-    {
-        unsafe { (*sink.0).AddLines(v.as_ptr(), v.len() as _); }
-    }
+    fn add_multi(v: &[Self], sink: &GeometrySink) { unsafe { (*sink.0).AddLines(v.as_ptr(), v.len() as _); } }
 }
 /// Line
 impl GeometrySegment for metrics::Point2F
 {
     fn add_to(&self, sink: &GeometrySink) { unsafe { (*sink.0).AddLine(*transmute_safe(self)); } }
-    fn add_multi(v: &[Self], sink: &GeometrySink)
-    {
-        unsafe { (*sink.0).AddLines(v.as_ptr() as _, v.len() as _); }
-    }
+    fn add_multi(v: &[Self], sink: &GeometrySink) { unsafe { (*sink.0).AddLines(v.as_ptr() as _, v.len() as _); } }
 }
 impl GeometrySegment for D2D1_QUADRATIC_BEZIER_SEGMENT
 {
     fn add_to(&self, sink: &GeometrySink) { unsafe { (*sink.0).AddQuadraticBezier(self); } }
-    fn add_multi(v: &[Self], sink: &GeometrySink)
-    {
-        unsafe { (*sink.0).AddQuadraticBeziers(v.as_ptr(), v.len() as _); }
-    }
+    fn add_multi(v: &[Self], sink: &GeometrySink) { unsafe { (*sink.0).AddQuadraticBeziers(v.as_ptr(), v.len() as _); } }
 }
 
 /// Driver class for ID2D1GaussianBlurEffect
-pub struct GaussianBlurEffect(*mut ID2D1Effect);
+pub struct GaussianBlurEffect(*mut ID2D1Effect); HandleWrapper!(for GaussianBlurEffect[ID2D1Effect]);
 impl DeviceContext
 {
     /// Create Gaussian Blur Effect
     pub fn new_gaussian_blur_effect(&self) -> IOResult<GaussianBlurEffect>
     {
         let mut handle = std::ptr::null_mut();
-        unsafe { (*self.0).CreateEffect(&CLSID_D2D1GaussianBlur, &mut handle) }.to_result_with(|| GaussianBlurEffect(handle))
+        unsafe { (*self.0).CreateEffect(&CLSID_D2D1GaussianBlur, &mut handle).to_result_with(|| GaussianBlurEffect(handle)) }
     }
 }
 impl GaussianBlurEffect
 {
-    pub fn set_source<I: EffectInput>(&self, input: &I) { self.set_input(0, input); }
+    pub fn set_source<I: EffectInput + ?Sized>(&self, input: &I) { self.set_input(0, input); }
     pub fn set_standard_deviation(&self, dev: f32) -> IOResult<()>
     {
         self.set_value(D2D1_GAUSSIANBLUR_PROP_STANDARD_DEVIATION as _, D2D1_PROPERTY_TYPE_UNKNOWN, &dev)
     }
 }
 /// Defines Effect Input
-pub trait EffectInput { unsafe fn set_input_to(&self, fx: *mut ID2D1Effect, index: u32); }
-impl<E: Effect> EffectInput for E
+pub trait EffectInput { fn set_input_for<E: Effect + ?Sized>(&self, fx: &E, index: u32); }
+impl<E: Effect + ?Sized> EffectInput for E
 {
-    unsafe fn set_input_to(&self, fx: *mut ID2D1Effect, index: u32) { (*fx).SetInput(index, self.get_output().0, true as _); }
+    fn set_input_for<FX: Effect + ?Sized>(&self, fx: &FX, index: u32) { unsafe { (*fx.as_raw_effect()).SetInput(index, self.get_output().0, true as _); } }
 }
 impl EffectInput for Bitmap1
 {
-    unsafe fn set_input_to(&self, fx: *mut ID2D1Effect, index: u32) { (*fx).SetInput(index, self.0 as *mut _, true as _); }
+    fn set_input_for<FX: Effect + ?Sized>(&self, fx: &FX, index: u32) { unsafe { (*fx.as_raw_effect()).SetInput(index, self.0 as *mut _, true as _); } }
 }
 /// As Effect
 pub trait Effect
 {
     fn as_raw_effect(&self) -> *mut ID2D1Effect;
 
-    fn set_input<I: EffectInput>(&self, index: usize, input: &I) { unsafe { input.set_input_to(self.as_raw_effect(), index as _); } }
+    fn set_input<I: EffectInput + ?Sized>(&self, index: usize, input: &I) { input.set_input_for(self, index as _); }
     fn get_output(&self) -> ImageRef
     {
         let mut o = std::ptr::null_mut();
@@ -531,15 +501,10 @@ pub trait Effect
     }
     fn set_value<T>(&self, index: usize, ptype: D2D1_PROPERTY_TYPE, value: &T) -> IOResult<()>
     {
-        unsafe { (*self.as_raw_effect()).SetValue(index as _, ptype, std::mem::transmute(value), std::mem::size_of::<T>() as _) }.checked()
+        unsafe { (*self.as_raw_effect()).SetValue(index as _, ptype, std::mem::transmute(value), std::mem::size_of::<T>() as _).checked() }
     }
 }
 impl Effect for GaussianBlurEffect { fn as_raw_effect(&self) -> *mut ID2D1Effect { self.0 } }
-
-AutoRemover!(for Factory[ID2D1Factory], Device[ID2D1Device], DeviceContext[ID2D1DeviceContext], Bitmap[ID2D1Bitmap], Bitmap1[ID2D1Bitmap1]);
-AutoRemover!(for SolidColorBrush[ID2D1SolidColorBrush], LinearGradientBrush[ID2D1LinearGradientBrush], RadialGradientBrush[ID2D1RadialGradientBrush]);
-AutoRemover!(for GradientStopCollection[ID2D1GradientStopCollection], ImageRef[ID2D1Image], GaussianBlurEffect[ID2D1GaussianBlurEffect]);
-AutoRemover!(for PathGeometry[ID2D1PathGeometry], GeometrySink[ID2D1GeometrySink]);
 
 /// Matrix 3x2
 pub struct Matrix3x2F(D2D1_MATRIX_3X2_F);
@@ -556,7 +521,4 @@ impl Matrix3x2F
         Matrix3x2F(D2D1_MATRIX_3X2_F { matrix: [[1.0, 0.0], [0.0, 1.0], [x, y]] })
     }
 }
-impl AsRef<D2D1_MATRIX_3X2_F> for Matrix3x2F
-{
-    fn as_ref(&self) -> &D2D1_MATRIX_3X2_F { &self.0 }
-}
+impl AsRef<D2D1_MATRIX_3X2_F> for Matrix3x2F { fn as_ref(&self) -> &D2D1_MATRIX_3X2_F { &self.0 } }
