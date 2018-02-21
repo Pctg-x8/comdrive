@@ -78,7 +78,7 @@ impl Factory
             presentOptions: D2D1_PRESENT_OPTIONS_NONE
         };
         let mut handle = std::ptr::null_mut();
-        unsafe { (*self.0).CreateHwndRenderTarget(&rtprops, &hwrtprops, &mut handle) .to_result_with(|| HwndRenderTarget(handle)) }
+        unsafe { (*self.0).CreateHwndRenderTarget(&rtprops, &hwrtprops, &mut handle).to_result_with(|| HwndRenderTarget(handle)) }
     }
 }
 impl HwndRenderTarget
