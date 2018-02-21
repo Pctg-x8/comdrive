@@ -69,8 +69,11 @@ impl Factory
     {
         let ws_ja_jp = WideCString::from_str("ja-JP").unwrap();
         let mut handle = std::ptr::null_mut();
-        unsafe { (*self.0).CreateTextFormat(family_name.to_wcstr().as_ptr(), collection.as_ref().map(|x| x.0).unwrap_or(std::ptr::null_mut()),
-            options.weight, options.style as _, options.stretch, size, ws_ja_jp.as_ptr(), &mut handle) }.to_result_with(|| TextFormat(handle))
+        unsafe
+        {
+            (*self.0).CreateTextFormat(family_name.to_wcstr().as_ptr(), collection.as_ref().map(|x| x.0).unwrap_or(std::ptr::null_mut()),
+                options.weight, options.style as _, options.stretch, size, ws_ja_jp.as_ptr(), &mut handle).to_result_with(|| TextFormat(handle))
+        }
     }
 }
 
@@ -116,8 +119,10 @@ impl TextLayout
     /// set character spacing
     pub fn set_character_spacing(&self, space: f32) -> IOResult<()>
     {
-        unsafe { (*self.0).SetCharacterSpacing(space / 2.0, space / 2.0, space,
-            DWRITE_TEXT_RANGE { startPosition: 0, length: std::u32::MAX }).checked() }
+        unsafe
+        {
+            (*self.0).SetCharacterSpacing(space / 2.0, space / 2.0, space, DWRITE_TEXT_RANGE { startPosition: 0, length: std::u32::MAX }).checked()
+        }
     }
 }
 
@@ -128,25 +133,23 @@ impl Factory
     pub fn system_font_collection(&self, check_for_updates: bool) -> IOResult<FontCollection>
     {
         let mut handle = std::ptr::null_mut();
-        unsafe { (*self.0).GetSystemFontCollection(&mut handle, check_for_updates as _) }
-            .to_result_with(|| FontCollection(handle))
+        unsafe { (*self.0).GetSystemFontCollection(&mut handle, check_for_updates as _).to_result_with(|| FontCollection(handle)) }
     }
     /// フォントコレクションローダ(各自で実装)を登録
     pub fn register_font_collection_loader(&self, loader: *mut IDWriteFontCollectionLoader) -> IOResult<()>
     {
-        unsafe { (*self.0).RegisterFontCollectionLoader(loader) }.checked()
+        unsafe { (*self.0).RegisterFontCollectionLoader(loader).checked() }
     }
     /// カスタムフォントコレクションを作成
     pub fn new_custom_font_collection<KeyT>(&self, loader: *mut IDWriteFontCollectionLoader, key: KeyT) -> IOResult<FontCollection>
     {
         let mut handle = std::ptr::null_mut();
-        unsafe { (*self.0).CreateCustomFontCollection(loader, &key as *const KeyT as *const c_void, std::mem::size_of::<KeyT>() as _, &mut handle) }
-            .to_result_with(|| FontCollection(handle))
+        unsafe { (*self.0).CreateCustomFontCollection(loader, &key as *const KeyT as *const c_void, std::mem::size_of::<KeyT>() as _, &mut handle).to_result_with(|| FontCollection(handle)) }
     }
     /// フォントコレクションローダの削除
     pub fn unregister_font_collection_loader(&self, loader: *mut IDWriteFontCollectionLoader) -> IOResult<()>
     {
-        unsafe { (*self.0).UnregisterFontCollectionLoader(loader) }.checked()
+        unsafe { (*self.0).UnregisterFontCollectionLoader(loader).checked() }
     }
 }
 
@@ -157,6 +160,6 @@ impl Factory
     pub fn new_font_file_reference<WPath: ::UnivString + ?Sized>(&self, path: &WPath) -> IOResult<FontFile>
     {
         let mut handle = std::ptr::null_mut();
-        unsafe { (*self.0).CreateFontFileReference(path.to_wcstr().as_ptr(), std::ptr::null(), &mut handle) }.to_result_with(|| FontFile(handle))
+        unsafe { (*self.0).CreateFontFileReference(path.to_wcstr().as_ptr(), std::ptr::null(), &mut handle).to_result_with(|| FontFile(handle)) }
     }
 }
