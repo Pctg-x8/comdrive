@@ -38,12 +38,12 @@ pub struct Device(*mut ID2D1Device); HandleWrapper!(for Device[ID2D1Device] + Fr
 impl Device
 {
     /// Create on Direct3D Device
-    pub fn new<DC: dxgi::DeviceChild>(dev3: &DC) -> IOResult<Self>
+    pub fn new<DC: dxgi::DeviceChild>(dev3: &DC, mt: bool) -> IOResult<Self>
     {
         let cp = D2D1_CREATION_PROPERTIES
         {
             debugLevel: D2D1_DEBUG_LEVEL_WARNING,
-            threadingMode: D2D1_THREADING_MODE_SINGLE_THREADED,
+            threadingMode: if mt { D2D1_THREADING_MODE_MULTI_THREADED } else { D2D1_THREADING_MODE_SINGLE_THREADED },
             options: D2D1_DEVICE_CONTEXT_OPTIONS_NONE
         };
         let mut handle = std::ptr::null_mut();
