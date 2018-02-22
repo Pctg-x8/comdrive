@@ -8,6 +8,7 @@ use winapi::um::dcommon::*;
 use winapi::shared::dxgiformat::DXGI_FORMAT_UNKNOWN;
 use std::ptr::{null, null_mut};
 use metrics::*;
+use std::borrow::Borrow;
 
 pub use winapi::um::d2d1::{D2D1_COLOR_F as ColorF, D2D1_SIZE_F as SizeF, D2D1_ELLIPSE as Ellipse};
 #[repr(C)] #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -82,9 +83,9 @@ impl Factory
 }
 impl HwndRenderTarget
 {
-    pub fn resize<S: AsRef<D2D1_SIZE_U>>(&self, new_size: &S) -> IOResult<()>
+    pub fn resize<S: Borrow<D2D1_SIZE_U> + ?Sized>(&self, new_size: &S) -> IOResult<()>
     {
-        unsafe { (*self.0).Resize(new_size.as_ref()).checked() }
+        unsafe { (*self.0).Resize(new_size.borrow()).checked() }
     }
 }
 
@@ -111,32 +112,32 @@ pub trait RenderTarget
     /// 描画終了
     fn end_draw(&self) -> IOResult<()> { unsafe { (*self.as_rt_handle()).EndDraw(null_mut(), null_mut()).checked() } }
     /// クリップ範囲の設定
-    fn push_aa_clip<Rect: AsRef<D2D1_RECT_F> + ?Sized>(&self, rect: &Rect, aliasing: AntialiasMode) -> &Self
+    fn push_aa_clip<Rect: Borrow<D2D1_RECT_F> + ?Sized>(&self, rect: &Rect, aliasing: AntialiasMode) -> &Self
     {
-        unsafe { (*self.as_rt_handle()).PushAxisAlignedClip(rect.as_ref(), aliasing as _) }; self
+        unsafe { (*self.as_rt_handle()).PushAxisAlignedClip(rect.borrow(), aliasing as _) }; self
     }
     /// クリップ範囲を解除
     fn pop_aa_clip(&self) -> &Self { unsafe { (*self.as_rt_handle()).PopAxisAlignedClip() }; self }
     
     /// トランスフォーム行列をセット
-    fn set_transform<Matrix: AsRef<D2D1_MATRIX_3X2_F> + ?Sized>(&self, matrix: &Matrix) -> &Self
+    fn set_transform<Matrix: Borrow<D2D1_MATRIX_3X2_F> + ?Sized>(&self, matrix: &Matrix) -> &Self
     {
-        unsafe { (*self.as_rt_handle()).SetTransform(matrix.as_ref()) }; self
+        unsafe { (*self.as_rt_handle()).SetTransform(matrix.borrow()) }; self
     }
     /// 描画ターゲットの中身を消去
-    fn clear<C: AsRef<ColorF> + ?Sized>(&self, color: &C) -> &Self { unsafe { (*self.as_rt_handle()).Clear(color.as_ref()) }; self }
+    fn clear<C: Borrow<ColorF> + ?Sized>(&self, color: &C) -> &Self { unsafe { (*self.as_rt_handle()).Clear(color.borrow()) }; self }
 
     /// 矩形を塗りつぶし
     #[deprecated = "use overrided version: fill<Rect2F>(...)"]
-    fn fill_rect<B: Brush + ?Sized, R: AsRef<D2D1_RECT_F> + ?Sized>(&self, area: &R, brush: &B) -> &Self
+    fn fill_rect<B: Brush + ?Sized, R: Borrow<D2D1_RECT_F> + ?Sized>(&self, area: &R, brush: &B) -> &Self
     {
-        unsafe { (*self.as_rt_handle()).FillRectangle(area.as_ref(), brush.as_raw_brush()) }; self
+        unsafe { (*self.as_rt_handle()).FillRectangle(area.borrow(), brush.as_raw_brush()) }; self
     }
     /// 矩形枠線
     #[deprecated = "use overrided version: draw<Rect2F>(...)"]
-    fn draw_rect<B: Brush + ?Sized, R: AsRef<D2D1_RECT_F> + ?Sized>(&self, area: &R, brush: &B) -> &Self
+    fn draw_rect<B: Brush + ?Sized, R: Borrow<D2D1_RECT_F> + ?Sized>(&self, area: &R, brush: &B) -> &Self
     {
-        unsafe { (*self.as_rt_handle()).DrawRectangle(area.as_ref(), brush.as_raw_brush(), 1.0, null_mut()) }; self
+        unsafe { (*self.as_rt_handle()).DrawRectangle(area.borrow(), brush.as_raw_brush(), 1.0, null_mut()) }; self
     }
     /// 楕円
     #[deprecated = "use overrided version: fill<Ellipse>(...)"]
@@ -157,59 +158,59 @@ pub trait RenderTarget
     /// 線を引く
     #[deprecated = "use overrided version: draw<Point2F .. Point2F>(...)"]
     fn draw_line<B: Brush + ?Sized, P1, P2>(&self, start: &P1, end: &P2, brush: &B, line_width: f32) -> &Self
-        where P1: AsRef<D2D1_POINT_2F> + ?Sized, P2: AsRef<D2D1_POINT_2F> + ?Sized
+        where P1: Borrow<D2D1_POINT_2F> + ?Sized, P2: Borrow<D2D1_POINT_2F> + ?Sized
     {
-        unsafe { (*self.as_rt_handle()).DrawLine(*start.as_ref(), *end.as_ref(), brush.as_raw_brush(), line_width, null_mut()) };
+        unsafe { (*self.as_rt_handle()).DrawLine(*start.borrow(), *end.borrow(), brush.as_raw_brush(), line_width, null_mut()) };
         self
     }
     /// レイアウト済みテキストの描画
-    fn draw_text<B: Brush + ?Sized, P: AsRef<D2D1_POINT_2F> + ?Sized>(&self, p: &P, layout: &dwrite::TextLayout, brush: &B) -> &Self
+    fn draw_text<B: Brush + ?Sized, P: Borrow<D2D1_POINT_2F> + ?Sized>(&self, p: &P, layout: &dwrite::TextLayout, brush: &B) -> &Self
     {
-        unsafe { (*self.as_rt_handle()).DrawTextLayout(*p.as_ref(), layout.as_raw_handle() as _, brush.as_raw_brush(), D2D1_DRAW_TEXT_OPTIONS_NONE) };
+        unsafe { (*self.as_rt_handle()).DrawTextLayout(*p.borrow(), layout.as_raw_handle() as _, brush.as_raw_brush(), D2D1_DRAW_TEXT_OPTIONS_NONE) };
         self
     }
     /// テキストの描画
     fn draw_raw_text<S: UnivString + ?Sized, B: Brush + ?Sized, R>(&self, r: &R, text: &S, format: &dwrite::TextFormat, brush: &B) -> &Self
-        where R: AsRef<D2D1_RECT_F> + ?Sized
+        where R: Borrow<D2D1_RECT_F> + ?Sized
     {
         let tw = text.to_wcstr();
         unsafe
         {
-            (*self.as_rt_handle()).DrawText(tw.as_ptr(), tw.len() as _, format.as_raw_handle(), r.as_ref(), brush.as_raw_brush(), D2D1_DRAW_TEXT_OPTIONS_NONE, DWRITE_MEASURING_MODE_NATURAL)
+            (*self.as_rt_handle()).DrawText(tw.as_ptr(), tw.len() as _, format.as_raw_handle(), r.borrow(), brush.as_raw_brush(), D2D1_DRAW_TEXT_OPTIONS_NONE, DWRITE_MEASURING_MODE_NATURAL)
         };
         self
     }
 
     /// ビットマップを描く
-    fn draw_bitmap<R: AsRef<D2D1_RECT_F> + ?Sized>(&self, bmp: &Bitmap, rect: &R) -> &Self
+    fn draw_bitmap<R: Borrow<D2D1_RECT_F> + ?Sized>(&self, bmp: &Bitmap, rect: &R) -> &Self
     {
-        unsafe { (*self.as_rt_handle()).DrawBitmap(bmp.0, rect.as_ref(), 1.0, D2D1_INTERPOLATION_MODE_LINEAR, null()) };
+        unsafe { (*self.as_rt_handle()).DrawBitmap(bmp.0, rect.borrow(), 1.0, D2D1_INTERPOLATION_MODE_LINEAR, null()) };
         self
     }
 
     /// ブラシの作成
-    fn new_solid_color_brush<C: AsRef<D2D1_COLOR_F> + ?Sized>(&self, col: &C) -> IOResult<SolidColorBrush>
+    fn new_solid_color_brush<C: Borrow<D2D1_COLOR_F> + ?Sized>(&self, col: &C) -> IOResult<SolidColorBrush>
     {
         let mut handle = std::ptr::null_mut();
-        unsafe { (*self.as_rt_handle()).CreateSolidColorBrush(col.as_ref(), std::ptr::null(), &mut handle) }.to_result_with(|| SolidColorBrush(handle))
+        unsafe { (*self.as_rt_handle()).CreateSolidColorBrush(col.borrow(), std::ptr::null(), &mut handle) }.to_result_with(|| SolidColorBrush(handle))
     }
     /// Create Linear Gradient Brush
     fn new_linear_gradient_brush<P1, P2>(&self, from: &P1, to: &P2, stops: &GradientStopCollection) -> IOResult<LinearGradientBrush>
-        where P1: AsRef<D2D1_POINT_2F> + ?Sized, P2: AsRef<D2D1_POINT_2F> + ?Sized
+        where P1: Borrow<D2D1_POINT_2F> + ?Sized, P2: Borrow<D2D1_POINT_2F> + ?Sized
     {
         let mut handle = std::ptr::null_mut();
-        let lb_props = D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES { startPoint: *from.as_ref(), endPoint: *to.as_ref() };
+        let lb_props = D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES { startPoint: *from.borrow(), endPoint: *to.borrow() };
         let brush_props = D2D1_BRUSH_PROPERTIES { opacity: 1.0, transform: Matrix3x2F::identity().unwrap() };
         unsafe { (*self.as_rt_handle()).CreateLinearGradientBrush(&lb_props, &brush_props, stops.0, &mut handle).to_result_with(|| LinearGradientBrush(handle)) }
     }
     /// Create Radial Gradient Brush
     fn new_radial_gradient_brush<P, S>(&self, center: &P, radius: &S, stops: &GradientStopCollection) -> IOResult<RadialGradientBrush>
-        where P: AsRef<D2D1_POINT_2F> + ?Sized, S: AsRef<D2D1_SIZE_F> + ?Sized
+        where P: Borrow<D2D1_POINT_2F> + ?Sized, S: Borrow<D2D1_SIZE_F> + ?Sized
     {
         let mut handle = std::ptr::null_mut();
         let rb_props = D2D1_RADIAL_GRADIENT_BRUSH_PROPERTIES
         {
-            center: *center.as_ref(), radiusX: radius.as_ref().width, radiusY: radius.as_ref().height,
+            center: *center.borrow(), radiusX: radius.borrow().width, radiusY: radius.borrow().height,
             gradientOriginOffset: D2D1_POINT_2F { x: 0.0, y: 0.0 }
         };
         let brush_props = D2D1_BRUSH_PROPERTIES { opacity: 1.0, transform: Matrix3x2F::identity().unwrap() };
@@ -235,8 +236,8 @@ pub trait Shape
 }
 impl Shape for Rect2F
 {
-    fn draw<B: Brush + ?Sized>(&self, p_rt: &mut ID2D1RenderTarget, brush: &B, line_width: f32) { unsafe { p_rt.DrawRectangle(self.as_ref(), brush.as_raw_brush(), line_width, null_mut()); } }
-    fn fill<B: Brush + ?Sized>(&self, p_rt: &mut ID2D1RenderTarget, brush: &B) { unsafe { p_rt.FillRectangle(self.as_ref(), brush.as_raw_brush()); } }
+    fn draw<B: Brush + ?Sized>(&self, p_rt: &mut ID2D1RenderTarget, brush: &B, line_width: f32) { unsafe { p_rt.DrawRectangle(self.borrow(), brush.as_raw_brush(), line_width, null_mut()); } }
+    fn fill<B: Brush + ?Sized>(&self, p_rt: &mut ID2D1RenderTarget, brush: &B) { unsafe { p_rt.FillRectangle(self.borrow(), brush.as_raw_brush()); } }
 }
 impl Shape for Ellipse
 {
@@ -244,11 +245,11 @@ impl Shape for Ellipse
     fn fill<B: Brush + ?Sized>(&self, p_rt: &mut ID2D1RenderTarget, brush: &B) { unsafe { p_rt.FillEllipse(self, brush.as_raw_brush()); } }
 }
 /// 線(start .. end)
-impl<P: AsRef<D2D1_POINT_2F>> Shape for ::std::ops::Range<P>
+impl<P: Borrow<D2D1_POINT_2F>> Shape for ::std::ops::Range<P>
 {
     fn draw<B: Brush + ?Sized>(&self, p_rt: &mut ID2D1RenderTarget, brush: &B, line_width: f32)
     {
-        unsafe { p_rt.DrawLine(*self.start.as_ref(), *self.end.as_ref(), brush.as_raw_brush(), line_width, null_mut()); }
+        unsafe { p_rt.DrawLine(*self.start.borrow(), *self.end.borrow(), brush.as_raw_brush(), line_width, null_mut()); }
     }
     fn fill<B: Brush + ?Sized>(&self, p_rt: &mut ID2D1RenderTarget, brush: &B) { self.draw(p_rt, brush, 1.0) }
 }
@@ -279,13 +280,13 @@ impl RenderTarget for DeviceContext { fn as_rt_handle(&self) -> *mut ID2D1Render
 impl DeviceContext
 {
     /// Imageを描く
-    pub fn draw<IMG: Image + ?Sized, P: AsRef<D2D1_POINT_2F> + ?Sized>(&self, offs: &P, image: &IMG) -> &Self
+    pub fn draw<IMG: Image + ?Sized, P: Borrow<D2D1_POINT_2F> + ?Sized>(&self, offs: &P, image: &IMG) -> &Self
     {
-        unsafe { (*self.0).DrawImage(image.as_raw_image(), offs.as_ref(), std::ptr::null(), D2D1_INTERPOLATION_MODE_LINEAR, D2D1_COMPOSITE_MODE_SOURCE_OVER) };
+        unsafe { (*self.0).DrawImage(image.as_raw_image(), offs.borrow(), std::ptr::null(), D2D1_INTERPOLATION_MODE_LINEAR, D2D1_COMPOSITE_MODE_SOURCE_OVER) };
         self
     }
     /// Effectを描く
-    pub fn draw_effected<E: Effect + ?Sized, P: AsRef<D2D1_POINT_2F> + ?Sized>(&self, offs: &P, fx: &E) -> &Self { self.draw(offs, &fx.get_output()) }
+    pub fn draw_effected<E: Effect + ?Sized, P: Borrow<D2D1_POINT_2F> + ?Sized>(&self, offs: &P, fx: &E) -> &Self { self.draw(offs, &fx.get_output()) }
 }
 /// Driver object for ID2D1Bitmap(Context bound object)
 pub struct Bitmap(*mut ID2D1Bitmap); HandleWrapper!(for Bitmap[ID2D1Bitmap] + FromRawHandle);
@@ -363,7 +364,7 @@ impl Brush for RadialGradientBrush { fn as_raw_brush(&self) -> *mut ID2D1Brush {
 pub struct GradientStopCollection(*mut ID2D1GradientStopCollection); HandleWrapper!(for GradientStopCollection[ID2D1GradientStopCollection] + FromRawHandle);
 #[repr(C)] #[derive(Clone)]
 pub struct GradientStop(pub f32, pub ColorF);
-impl AsRef<D2D1_GRADIENT_STOP> for GradientStop { fn as_ref(&self) -> &D2D1_GRADIENT_STOP { unsafe { std::mem::transmute(self) } } }
+impl Borrow<D2D1_GRADIENT_STOP> for GradientStop { fn borrow(&self) -> &D2D1_GRADIENT_STOP { unsafe { std::mem::transmute(self) } } }
 #[repr(C)] #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Gamma { Linear = D2D1_GAMMA_1_0 as _, SRGB = D2D1_GAMMA_2_2 as _ }
 #[repr(C)] #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -371,7 +372,7 @@ pub enum ExtendMode { Clamp = D2D1_EXTEND_MODE_CLAMP as _, Wrap = D2D1_EXTEND_MO
 
 impl SolidColorBrush
 {
-    pub fn set_color<C: AsRef<D2D1_COLOR_F> + ?Sized>(&self, col: &C) { unsafe { (*self.0).SetColor(col.as_ref()); } }
+    pub fn set_color<C: Borrow<D2D1_COLOR_F> + ?Sized>(&self, col: &C) { unsafe { (*self.0).SetColor(col.borrow()); } }
 }
 
 /// Driver class for ID2D1PathGeometry
@@ -403,10 +404,10 @@ pub trait GeometrySegment
 }
 impl GeometrySink
 {
-    pub fn begin_figure<P: AsRef<D2D1_POINT_2F> + ?Sized>(&self, p: &P, fill: bool) -> &Self
+    pub fn begin_figure<P: Borrow<D2D1_POINT_2F> + ?Sized>(&self, p: &P, fill: bool) -> &Self
     {
         let fb = if fill { D2D1_FIGURE_BEGIN_FILLED } else { D2D1_FIGURE_BEGIN_HOLLOW };
-        unsafe { (*self.0).BeginFigure(*p.as_ref(), fb) }; self
+        unsafe { (*self.0).BeginFigure(*p.borrow(), fb) }; self
     }
     pub fn add<S: GeometrySegment + ?Sized>(&self, segment: &S) -> &Self
     {
@@ -523,4 +524,4 @@ impl Matrix3x2F
         Matrix3x2F(D2D1_MATRIX_3X2_F { matrix: [[1.0, 0.0], [0.0, 1.0], [x, y]] })
     }
 }
-impl AsRef<D2D1_MATRIX_3X2_F> for Matrix3x2F { fn as_ref(&self) -> &D2D1_MATRIX_3X2_F { &self.0 } }
+impl Borrow<D2D1_MATRIX_3X2_F> for Matrix3x2F { fn borrow(&self) -> &D2D1_MATRIX_3X2_F { &self.0 } }
