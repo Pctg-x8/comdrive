@@ -326,7 +326,7 @@ impl DeviceContext
             },
             RenderableBitmapSource::New(size) => unsafe
             {
-                (*self.0).CreateBitmap(*transmute_safe(&size), std::ptr::null(), 0, &props, &mut handle)
+                (*self.0).CreateBitmap(*size.borrow(), std::ptr::null(), 0, &props, &mut handle)
             }
         }.to_result_with(|| Bitmap1(handle))
     }
@@ -453,7 +453,7 @@ impl GeometrySegment for D2D1_POINT_2F
 /// Line
 impl GeometrySegment for metrics::Point2F
 {
-    fn add_to(&self, sink: &GeometrySink) { unsafe { (*sink.0).AddLine(*transmute_safe(self)); } }
+    fn add_to(&self, sink: &GeometrySink) { unsafe { (*sink.0).AddLine(*self.borrow()); } }
     fn add_multi(v: &[Self], sink: &GeometrySink) { unsafe { (*sink.0).AddLines(v.as_ptr() as _, v.len() as _); } }
 }
 impl GeometrySegment for D2D1_QUADRATIC_BEZIER_SEGMENT
