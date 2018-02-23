@@ -192,13 +192,13 @@ impl ScaleTransform
     /// Set X Scaling
     pub fn set_x_scale<P: Parameter>(&self, v: P) -> IOResult<()>
     {
-        let (fpo, fpv) = unsafe { ObtainPropertySetter!(extern fn(self: *mut IDCompositionScaleTransform, *const IDCompositionAnimation => SetScaleX_1 | c_float => SetScaleX_2) -> HRESULT) };
+        let (fpo, fpv) = unsafe { ObtainPropertySetter!(extern fn(self: *mut IDCompositionScaleTransform, *const IDCompositionAnimation => SetScaleX_2 | c_float => SetScaleX_1) -> HRESULT) };
         v.pass(|x| unsafe { fpv(self.0 as _, x) }, |x| unsafe { fpo(self.0 as _, x) })
     }
     /// Set Y Scaling
     pub fn set_y_scale<P: Parameter>(&self, v: P) -> IOResult<()>
     {
-        let (fpo, fpv) = unsafe { ObtainPropertySetter!(extern fn(self: *mut IDCompositionScaleTransform, *const IDCompositionAnimation => SetScaleY_1 | c_float => SetScaleY_2) -> HRESULT) };
+        let (fpo, fpv) = unsafe { ObtainPropertySetter!(extern fn(self: *mut IDCompositionScaleTransform, *const IDCompositionAnimation => SetScaleY_2 | c_float => SetScaleY_1) -> HRESULT) };
         v.pass(|x| unsafe { fpv(self.0 as _, x) }, |x| unsafe { fpo(self.0 as _, x) })
     }
     /// Set Both parameter
@@ -212,19 +212,19 @@ impl RotateTransform
     /// Set Angle
     pub fn set_angle<P: Parameter>(&self, v: P) -> IOResult<()>
     {
-        let (fpo, fpv) = unsafe { ObtainPropertySetter!(extern fn(self: *mut IDCompositionRotateTransform, *const IDCompositionAnimation => SetAngle_1 | c_float => SetAngle_2) -> HRESULT) };
+        let (fpo, fpv) = unsafe { ObtainPropertySetter!(extern fn(self: *mut IDCompositionRotateTransform, *const IDCompositionAnimation => SetAngle_2 | c_float => SetAngle_1) -> HRESULT) };
         v.pass(|x| unsafe { fpv(self.0 as _, x) }, |x| unsafe { fpo(self.0 as _, x) })
     }
     /// Set Center X
     pub fn set_center_x<P: Parameter>(&self, v: P) -> IOResult<()>
     {
-        let (fpo, fpv) = unsafe { ObtainPropertySetter!(extern fn(self: *mut IDCompositionRotateTransform, *const IDCompositionAnimation => SetCenterX_1 | c_float => SetCenterX_2) -> HRESULT) };
+        let (fpo, fpv) = unsafe { ObtainPropertySetter!(extern fn(self: *mut IDCompositionRotateTransform, *const IDCompositionAnimation => SetCenterX_2 | c_float => SetCenterX_1) -> HRESULT) };
         v.pass(|x| unsafe { fpv(self.0 as _, x) }, |x| unsafe { fpo(self.0 as _, x) })
     }
     /// Set Center Y
     pub fn set_center_y<P: Parameter>(&self, v: P) -> IOResult<()>
     {
-        let (fpo, fpv) = unsafe { ObtainPropertySetter!(extern fn(self: *mut IDCompositionRotateTransform, *const IDCompositionAnimation => SetCenterY_1 | c_float => SetCenterY_2) -> HRESULT) };
+        let (fpo, fpv) = unsafe { ObtainPropertySetter!(extern fn(self: *mut IDCompositionRotateTransform, *const IDCompositionAnimation => SetCenterY_2 | c_float => SetCenterY_1) -> HRESULT) };
         v.pass(|x| unsafe { fpv(self.0 as _, x) }, |x| unsafe { fpo(self.0 as _, x) })
     }
     /// Set Center Parameter
