@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["S.Percentage"]
 description = "COM Object Driver and Definitions for Rust"
 
+[features]
+trace_releasing = ""
+
 [dependencies]
 widestring = "0.2"
 metrics = { git = "https://github.com/Pctg-x8/metrics" }

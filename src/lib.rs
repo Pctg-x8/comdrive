@@ -85,8 +85,12 @@ macro_rules! AutoRemover
             {
                 if let Some(p) = unsafe { self.0.as_mut() }
                 {
-                    /*let rc = */unsafe { p.Release() };
-                    // println!("Dropping {}({}) outstanding refcount: {}", stringify!($t), stringify!($ti), rc);
+                    if cfg!(trace_releasing)
+                    {
+                        let rc = unsafe { p.Release() };
+                        println!("trace_releasing: Dropping {}({}) outstanding refcount: {}", stringify!($t), stringify!($ti), rc);
+                    }
+                    else { unsafe { p.Release(); } }
                     self.0 = std::ptr::null_mut();
                 }
             }
