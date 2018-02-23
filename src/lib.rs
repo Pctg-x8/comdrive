@@ -88,7 +88,7 @@ macro_rules! AutoRemover
                     if cfg!(feature = "trace_releasing")
                     {
                         let rc = unsafe { p.Release() };
-                        println!("trace_releasing: Dropping {}({}) outstanding refcount: {}", stringify!($t), stringify!($ti), rc);
+                        println!("trace_releasing: Dropping {}({}@{:x}) outstanding refcount: {}", stringify!($t), stringify!($ti), self.0 as usize, rc);
                     }
                     else { unsafe { p.Release(); } }
                     self.0 = std::ptr::null_mut();
