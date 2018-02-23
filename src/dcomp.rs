@@ -120,7 +120,7 @@ impl Visual
     pub fn set_transform<T: Transform>(&self, transform: &T) -> IOResult<()>
     {
         let vtbl = unsafe { &(*(*self.0).lpVtbl).parent.parent.parent };
-        let to = unsafe { ObtainPropertySetter!(extern fn(v [vtbl] *mut IDCompositionVisual, *const IDCompositionTransform => SetTransform_1) -> HRESULT) };
+        let to = unsafe { ObtainPropertySetter!(extern fn(v [vtbl] *mut IDCompositionVisual, *const IDCompositionTransform => SetTransform_2) -> HRESULT) };
         unsafe { to(self.0 as _, transform.as_raw_transform()).checked() }
     }
     /// Set Effect
