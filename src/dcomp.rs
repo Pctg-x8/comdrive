@@ -132,14 +132,14 @@ impl Visual
     pub fn set_left<P: Parameter>(&self, v: P) -> IOResult<()>
     {
         let vtbl = unsafe { &(*(*self.0).lpVtbl).parent.parent.parent };
-        let (fpo, fpv) = unsafe { ObtainPropertySetter!(extern fn(v [vtbl] *mut IDCompositionVisual, *const IDCompositionAnimation => SetOffsetX_1 | c_float => SetOffsetX_2) -> HRESULT) };
+        let (fpo, fpv) = unsafe { ObtainPropertySetter!(extern fn(v [vtbl] *mut IDCompositionVisual, *const IDCompositionAnimation => SetOffsetX_2 | c_float => SetOffsetX_1) -> HRESULT) };
         v.pass(|x| unsafe { fpv(self.0 as _, x) }, |x| unsafe { fpo(self.0 as _, x) })
     }
     /// Set Y Offset
     pub fn set_top<P: Parameter>(&self, v: P) -> IOResult<()>
     {
         let vtbl = unsafe { &(*(*self.0).lpVtbl).parent.parent.parent };
-        let (fpo, fpv) = unsafe { ObtainPropertySetter!(extern fn(v [vtbl] *mut IDCompositionVisual, *const IDCompositionAnimation => SetOffsetY_1 | c_float => SetOffsetY_2) -> HRESULT) };
+        let (fpo, fpv) = unsafe { ObtainPropertySetter!(extern fn(v [vtbl] *mut IDCompositionVisual, *const IDCompositionAnimation => SetOffsetY_2 | c_float => SetOffsetY_1) -> HRESULT) };
         v.pass(|x| unsafe { fpv(self.0 as _, x) }, |x| unsafe { fpo(self.0 as _, x) })
     }
     /// Set Offset
@@ -150,7 +150,7 @@ impl Visual
     /// Set Opacity
     pub fn set_opacity<P: Parameter>(&self, a: P) -> IOResult<()>
     {
-        let (fpo, fpv) = unsafe { ObtainPropertySetter!(extern fn(self: *mut IDCompositionVisual3, *const IDCompositionAnimation => SetOpacity_1 | c_float => SetOpacity_2) -> HRESULT) };
+        let (fpo, fpv) = unsafe { ObtainPropertySetter!(extern fn(self: *mut IDCompositionVisual3, *const IDCompositionAnimation => SetOpacity_2 | c_float => SetOpacity_1) -> HRESULT) };
         a.pass(|x| unsafe { fpv(self.0, x) }, |x| unsafe { fpo(self.0, x) })
     }
     /// 拡縮時のビットマップ補間モードを指定する
