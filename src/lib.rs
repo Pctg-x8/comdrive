@@ -85,7 +85,7 @@ macro_rules! AutoRemover
             {
                 if let Some(p) = unsafe { self.0.as_mut() }
                 {
-                    if cfg!(trace_releasing)
+                    if cfg!(feature = "trace_releasing")
                     {
                         let rc = unsafe { p.Release() };
                         println!("trace_releasing: Dropping {}({}) outstanding refcount: {}", stringify!($t), stringify!($ti), rc);
