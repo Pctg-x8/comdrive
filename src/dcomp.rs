@@ -35,6 +35,8 @@ impl Device
     }
     /// Commit Changes
     pub fn commit(&self) -> IOResult<()> { unsafe { (*self.0).Commit().checked() } }
+    /// Wait for the previous commit completion
+    pub fn wait_for_commit_completion(&self) -> IOResult<()> { unsafe { (*self.0).WaitForCommitCompletion().checked() } }
 }
 
 /// Driver object for IDCompositionTarget
