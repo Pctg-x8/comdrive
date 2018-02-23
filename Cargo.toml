@@ -5,7 +5,7 @@ authors = ["S.Percentage"]
 description = "COM Object Driver and Definitions for Rust"
 
 [features]
-trace_releasing = ""
+trace_releasing = []
 
 [dependencies]
 widestring = "0.2"
