@@ -238,7 +238,7 @@ impl ResourceDesc
         })
     }
     /// 平面テクスチャ
-    pub fn texture2d(size: &Size2, format: DXGI_FORMAT, usage: ResourceFlag) -> Self
+    pub fn texture2d(size: &Size2U, format: dxgi::Format, usage: ResourceFlag) -> Self
     {
         ResourceDesc(D3D12_RESOURCE_DESC
         {
