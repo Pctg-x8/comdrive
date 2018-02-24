@@ -13,6 +13,7 @@ use winapi::shared::ntdef::HANDLE;
 use std::path::Path;
 use std::ops::Deref;
 use metrics::*;
+use std::borrow::Borrow;
 
 pub use winapi::um::d3d12::D3D12_SHADER_BYTECODE as ShaderBytecode;
 pub use winapi::um::d3d12::D3D12_GRAPHICS_PIPELINE_STATE_DESC as GraphicsPipelineStateDesc;
@@ -224,6 +225,7 @@ impl ResourceFlag
 /// リソースの詳細
 pub struct ResourceDesc(D3D12_RESOURCE_DESC);
 unsafe impl MarkForSameBits<D3D12_RESOURCE_DESC> for ResourceDesc {}
+impl Borrow<D3D12_RESOURCE_DESC> for ResourceDesc { fn borrow(&self) -> &D3D12_RESOURCE_DESC { &self.0 } }
 impl ResourceDesc
 {
     /// バッファ
@@ -306,7 +308,7 @@ impl Device
         let mut handle = std::ptr::null_mut();
         unsafe
         {
-            (*self.0).CreateCommittedResource(transmute_safe(heap_props), D3D12_HEAP_FLAG_NONE, transmute_safe(desc), initial_state as _,
+            (*self.0).CreateCommittedResource(heap_props.borrow(), D3D12_HEAP_FLAG_NONE, desc.borrow(), initial_state as _,
                 opt_cv.as_ref().map(|x| x as *const _).unwrap_or(std::ptr::null()), &ID3D12Resource::uuidof(), &mut handle)
         }.to_result_with(|| Resource(handle as _))
     }
@@ -344,6 +346,7 @@ impl Resource
 /// ヒープのプロパティ
 pub struct HeapProperty(D3D12_HEAP_PROPERTIES);
 unsafe impl MarkForSameBits<D3D12_HEAP_PROPERTIES> for HeapProperty {}
+impl Borrow<D3D12_HEAP_PROPERTIES> for HeapProperty { fn borrow(&self) -> &D3D12_HEAP_PROPERTIES { &self.0 } }
 impl HeapProperty
 {
     /// デフォルトヒープ(CPUアクセスなし)
@@ -372,7 +375,7 @@ pub struct Heap(*mut ID3D12Heap, *mut ID3D12Device);
 impl Device
 {
     /// ヒープの作成
-    pub fn new_heap(&self, property: HeapProperty, size: usize, for_textures: bool) -> IOResult<Heap>
+    pub fn new_heap(&self, property: &HeapProperty, size: usize, for_textures: bool) -> IOResult<Heap>
     {
         let desc = D3D12_HEAP_DESC
         {
