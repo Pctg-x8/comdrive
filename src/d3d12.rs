@@ -56,25 +56,26 @@ pub enum InputClassification
 }
 
 /// Driver object for ID2D1Device
-pub struct Device(*mut ID3D12Device);
-impl AsIUnknown for Device { fn as_iunknown(&self) -> *mut IUnknown { self.0 as _ } }
-impl AsRawHandle<ID3D12Device> for Device { fn as_raw_handle(&self) -> *mut ID3D12Device { self.0 } }
-impl FromRawHandle<ID3D12Device> for Device { unsafe fn from_raw_handle(h: *mut ID3D12Device) -> Self { Device(h) } }
+pub struct Device(*mut ID3D12Device); HandleWrapper!(for Device[ID3D12Device] + FromRawHandle);
 impl Device
 {
     /// デバッグレイヤーを有効化
     pub fn enable_debug_layer() -> IOResult<()>
     {
         let mut dbg = std::ptr::null_mut();
-        unsafe { D3D12GetDebugInterface(&ID3D12Debug::uuidof(), &mut dbg) }.to_result_with(|| dbg as *mut ID3D12Debug)
-            .map(|dbg| unsafe { (*dbg).EnableDebugLayer() })
+        unsafe
+        {
+            D3D12GetDebugInterface(&ID3D12Debug::uuidof(), &mut dbg).to_result_with(|| dbg as *mut ID3D12Debug).map(|dbg| (*dbg).EnableDebugLayer())
+        }
     }
     /// Create
-    pub fn new<Adapter: AsIUnknown>(adapter: &Adapter, min_feature_level: d3d::FeatureLevel) -> IOResult<Self>
+    pub fn new<Adapter: AsIUnknown + ?Sized>(adapter: &Adapter, min_feature_level: d3d::FeatureLevel) -> IOResult<Self>
     {
         let mut handle = std::ptr::null_mut();
-        unsafe { D3D12CreateDevice(adapter.as_iunknown(), min_feature_level as D3D_FEATURE_LEVEL, &ID3D12Device::uuidof(), &mut handle) }
-            .to_result_with(|| Device(handle as _))
+        unsafe
+        {
+            D3D12CreateDevice(adapter.as_iunknown(), min_feature_level as D3D_FEATURE_LEVEL, &ID3D12Device::uuidof(), &mut handle).to_result_with(|| Device(handle as _))
+        }
     }
     
     /// レンダーターゲットビューの作成
@@ -97,10 +98,7 @@ pub enum CommandType
     Compute = D3D12_COMMAND_LIST_TYPE_COMPUTE, Copy = D3D12_COMMAND_LIST_TYPE_COPY
 }
 /// コマンドキュー
-pub struct CommandQueue(*mut ID3D12CommandQueue);
-impl AsIUnknown for CommandQueue { fn as_iunknown(&self) -> *mut IUnknown { self.0 as _ } }
-impl AsRawHandle<ID3D12CommandQueue> for CommandQueue { fn as_raw_handle(&self) -> *mut ID3D12CommandQueue { self.0 } }
-impl FromRawHandle<ID3D12CommandQueue> for CommandQueue { unsafe fn from_raw_handle(h: *mut ID3D12CommandQueue) -> Self { CommandQueue(h) } }
+pub struct CommandQueue(*mut ID3D12CommandQueue); HandleWrapper!(for CommandQueue[ID3D12CommandQueue] + FromRawHandle);
 impl Device
 {
     /// コマンドキューの作成
@@ -108,8 +106,7 @@ impl Device
     {
         let desc = D3D12_COMMAND_QUEUE_DESC { Type: cmd_type as _, Priority: priority, Flags: 0, NodeMask: 0 };
         let mut handle = std::ptr::null_mut();
-        unsafe { (*self.0).CreateCommandQueue(&desc, &ID3D12CommandQueue::uuidof(), &mut handle) }
-            .to_result_with(|| CommandQueue(handle as _))
+        unsafe { (*self.0).CreateCommandQueue(&desc, &ID3D12CommandQueue::uuidof(), &mut handle).to_result_with(|| CommandQueue(handle as _)) }
     }
 }
 impl CommandQueue
@@ -123,25 +120,27 @@ impl CommandQueue
     /// GPUからフェンスをアップデートするように指示
     pub fn signal(&self, fence: &Fence, value: u64) -> IOResult<&Self>
     {
-        unsafe { (*self.0).Signal(fence.0, value) }.to_result(self)
+        unsafe { (*self.0).Signal(fence.0, value).to_result(self) }
     }
 }
 /// コマンドアロケータ
-pub struct CommandAllocator(*mut ID3D12CommandAllocator, CommandType);
+pub struct CommandAllocator(*mut ID3D12CommandAllocator, CommandType); HandleWrapper!(for CommandAllocator[ID3D12CommandAllocator]);
 impl Device
 {
     /// コマンドアロケータの作成
     pub fn new_command_allocator(&self, cmd_type: CommandType) -> IOResult<CommandAllocator>
     {
         let mut handle = std::ptr::null_mut();
-        unsafe { (*self.0).CreateCommandAllocator(cmd_type as _, &ID3D12CommandAllocator::uuidof(), &mut handle) }
-            .to_result_with(|| CommandAllocator(handle as _, cmd_type))
+        unsafe
+        {
+            (*self.0).CreateCommandAllocator(cmd_type as _, &ID3D12CommandAllocator::uuidof(), &mut handle).to_result_with(|| CommandAllocator(handle as _, cmd_type))
+        }
     }
 }
 impl CommandAllocator
 {
     /// リセット
-    pub fn reset(&self) -> IOResult<()> { unsafe { (*self.0).Reset() }.checked() }
+    pub fn reset(&self) -> IOResult<()> { unsafe { (*self.0).Reset().checked() } }
 }
 
 /// デスクリプタヒープの中身
@@ -154,8 +153,7 @@ pub enum DescriptorHeapContents
     DepthStencilViews = D3D12_DESCRIPTOR_HEAP_TYPE_DSV
 }
 /// デスクリプタヒープ
-pub struct DescriptorHeap(*mut ID3D12DescriptorHeap, usize);
-impl AsRawHandle<ID3D12DescriptorHeap> for DescriptorHeap { fn as_raw_handle(&self) -> *mut ID3D12DescriptorHeap { self.0 } }
+pub struct DescriptorHeap(*mut ID3D12DescriptorHeap, usize); HandleWrapper!(for DescriptorHeap[ID3D12DescriptorHeap]);
 impl Device
 {
     /// デスクリプタヒープの作成
@@ -195,8 +193,8 @@ pub struct HostDescriptorHandle(D3D12_CPU_DESCRIPTOR_HANDLE, usize);
 /// デスクリプタハンドル(GPU)
 #[derive(Clone)]
 pub struct DeviceDescriptorHandle(D3D12_GPU_DESCRIPTOR_HANDLE, usize);
-impl AsRef<D3D12_CPU_DESCRIPTOR_HANDLE> for HostDescriptorHandle { fn as_ref(&self) -> &D3D12_CPU_DESCRIPTOR_HANDLE { &self.0 } }
-impl AsRef<D3D12_GPU_DESCRIPTOR_HANDLE> for DeviceDescriptorHandle { fn as_ref(&self) -> &D3D12_GPU_DESCRIPTOR_HANDLE { &self.0 } }
+impl Borrow<D3D12_CPU_DESCRIPTOR_HANDLE> for HostDescriptorHandle { fn borrow(&self) -> &D3D12_CPU_DESCRIPTOR_HANDLE { &self.0 } }
+impl Borrow<D3D12_GPU_DESCRIPTOR_HANDLE> for DeviceDescriptorHandle { fn borrow(&self) -> &D3D12_GPU_DESCRIPTOR_HANDLE { &self.0 } }
 impl HostDescriptorHandle
 {
     /// count番目を参照
@@ -277,19 +275,7 @@ pub enum OptimizedClearValue
     Color(DXGI_FORMAT, f32, f32, f32, f32), DepthStencil(DXGI_FORMAT, f32, u8)
 }
 /// リソースハンドル
-pub struct Resource(*mut ID3D12Resource);
-impl AsIUnknown for Resource { fn as_iunknown(&self) -> *mut IUnknown { self.0 as _ } }
-impl AsRawHandle<ID3D12Resource> for Resource { fn as_raw_handle(&self) -> *mut ID3D12Resource { self.0 } }
-impl FromRawHandle<ID3D12Resource> for Resource { unsafe fn from_raw_handle(h: *mut ID3D12Resource) -> Self { Resource(h) } }
-impl Handle for Resource
-{
-    type RawType = ID3D12Resource;
-    fn query_interface<Q: Handle>(&self) -> IOResult<Q> where Q: FromRawHandle<<Q as Handle>::RawType>
-    {
-        let mut handle: *mut Q::RawType = std::ptr::null_mut();
-        unsafe { (*self.0).QueryInterface(&Q::RawType::uuidof(), std::mem::transmute(&mut handle)) }.to_result_with(|| unsafe { Q::from_raw_handle(handle) })
-    }
-}
+pub struct Resource(*mut ID3D12Resource); HandleWrapper!(for Resource[ID3D12Resource] + FromRawHandle);
 impl Device
 {
     /// コミット済みリソースの作成
@@ -319,13 +305,13 @@ impl Resource
     pub fn map<R: MappingRange>(&self, range: R) -> IOResult<*mut c_void>
     {
         let mut ptr = std::ptr::null_mut();
-        unsafe { (*self.0).Map(0, range.range_object().as_ref().map(|x| x as _).unwrap_or(std::ptr::null()), &mut ptr) }
+        unsafe { (*self.0).Map(0, range.into_range_object().as_ref().map(|x| x as _).unwrap_or(std::ptr::null()), &mut ptr) }
             .to_result_with(|| ptr)
     }
     /// メモリのマッピングを解除する
     pub fn unmap<R: MappingRange>(&self, range: R)
     {
-        unsafe { (*self.0).Unmap(0, range.range_object().as_ref().map(|x| x as _).unwrap_or(std::ptr::null())) }
+        unsafe { (*self.0).Unmap(0, range.into_range_object().as_ref().map(|x| x as _).unwrap_or(std::ptr::null())) }
     }
     /// GPU内仮想アドレスを取得
     pub fn gpu_virtual_address(&self) -> GraphicsVirtualPtr
@@ -371,7 +357,7 @@ impl HeapProperty
     }
 }
 /// ヒープオブジェクト(リソースをまとめる)
-pub struct Heap(*mut ID3D12Heap, *mut ID3D12Device);
+pub struct Heap(*mut ID3D12Heap, *mut ID3D12Device); HandleWrapper!(for Heap[ID3D12Heap]);
 impl Device
 {
     /// ヒープの作成
@@ -383,7 +369,7 @@ impl Device
             Flags: if for_textures { D3D12_HEAP_FLAG_DENY_BUFFERS } else { D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS }
         };
         let mut handle = std::ptr::null_mut();
-        unsafe { (*self.0).CreateHeap(&desc, &ID3D12Heap::uuidof(), &mut handle) }.to_result_with(|| Heap(handle as _, self.0))
+        unsafe { (*self.0).CreateHeap(&desc, &ID3D12Heap::uuidof(), &mut handle).to_result_with(|| Heap(handle as _, self.0)) }
     }
 }
 impl Heap
@@ -399,34 +385,37 @@ impl Heap
             Flags: 0
         };
         let mut handle = std::ptr::null_mut();
-        unsafe { (*self.1).CreatePlacedResource(self.0, range.start as _, &desc, initial_state as _, std::ptr::null(), &ID3D12Resource::uuidof(), &mut handle) }
-            .to_result_with(|| Resource(handle as _))
+        unsafe
+        {
+            (*self.1).CreatePlacedResource(self.0, range.start as _, &desc, initial_state as _, std::ptr::null(), &ID3D12Resource::uuidof(), &mut handle).to_result_with(|| Resource(handle as _))
+        }
     }
 }
 
 /// マッピングはんいを表す
-pub trait MappingRange : Sized { fn range_object(self) -> Option<Range>; }
+pub trait MappingRange : Sized { fn into_range_object(self) -> Option<Range>; }
 /// はんい指定
 impl MappingRange for std::ops::Range<usize>
 {
-    fn range_object(self) -> Option<Range> { Some(Range { Begin: self.start as _, End: self.end as _ }) }
+    fn into_range_object(self) -> Option<Range> { Some(Range { Begin: self.start as _, End: self.end as _ }) }
 }
 /// 最初を省略(0と同じ)
 impl MappingRange for std::ops::RangeTo<usize>
 {
-    fn range_object(self) -> Option<Range> { Some(Range { Begin: 0, End: self.end as _ }) }
+    fn into_range_object(self) -> Option<Range> { Some(Range { Begin: 0, End: self.end as _ }) }
 }
 /// 全体
 impl MappingRange for std::ops::RangeFull
 {
-    fn range_object(self) -> Option<Range> { None }
+    fn into_range_object(self) -> Option<Range> { None }
 }
 /// アプリケーションカスタム
-impl MappingRange for Option<Range> { fn range_object(self) -> Option<Range> { self } }
+impl MappingRange for Option<Range> { fn into_range_object(self) -> Option<Range> { self } }
 
 /// ルートシグネチャのパラメータ(シェーダ定数に関わる)
 pub struct RootParameter(D3D12_ROOT_PARAMETER);
 unsafe impl MarkForSameBits<D3D12_ROOT_PARAMETER> for RootParameter {}
+impl Borrow<D3D12_ROOT_PARAMETER> for RootParameter { fn borrow(&self) -> &D3D12_ROOT_PARAMETER { &self.0 } }
 impl RootParameter
 {
     /// 定数パラメータ
@@ -475,6 +464,7 @@ impl RootParameter
 /// 固定サンプラー
 pub struct StaticSampler(D3D12_STATIC_SAMPLER_DESC);
 unsafe impl MarkForSameBits<D3D12_STATIC_SAMPLER_DESC> for StaticSampler {}
+impl Borrow<D3D12_STATIC_SAMPLER_DESC> for StaticSampler { fn borrow(&self) -> &D3D12_STATIC_SAMPLER_DESC { &self.0 } }
 impl StaticSampler
 {
     /// 線形補間, 切り落とし
@@ -491,10 +481,7 @@ impl StaticSampler
     }
 }
 /// ルートシグネチャ
-pub struct RootSignature(*mut ID3D12RootSignature);
-impl AsIUnknown for RootSignature { fn as_iunknown(&self) -> *mut IUnknown { self.0 as _ } }
-impl AsRawHandle<ID3D12RootSignature> for RootSignature { fn as_raw_handle(&self) -> *mut ID3D12RootSignature { self.0 } }
-impl FromRawHandle<ID3D12RootSignature> for RootSignature { unsafe fn from_raw_handle(h: *mut ID3D12RootSignature) -> Self { RootSignature(h) } }
+pub struct RootSignature(*mut ID3D12RootSignature); HandleWrapper!(for RootSignature[ID3D12RootSignature] + FromRawHandle);
 impl Device
 {
     /// ルートシグネチャを作成
@@ -513,7 +500,7 @@ impl Device
         {
             panic!("D3D12SerializeRootSignature Error: {:?}", unsafe { std::ffi::CStr::from_ptr((*errmsg).GetBufferPointer() as _) });
         }
-        hr.to_result(()).and_then(|_| unsafe
+        hr.checked().and_then(|_| unsafe
         {
             let mut handle = std::ptr::null_mut();
             (*self.0).CreateRootSignature(0, (*serialized).GetBufferPointer(), (*serialized).GetBufferSize(),
@@ -529,12 +516,14 @@ impl RootSignature
         let (mut rsb, mut sig) = (std::ptr::null_mut(), std::ptr::null_mut());
         unsafe { D3DGetBlobPart(bin.as_ptr() as *const _, bin.len() as _, D3D_BLOB_ROOT_SIGNATURE, 0, &mut rsb) }.checked()?;
         let rsb = ComPtr(rsb as *mut ID3DBlob);
-        unsafe { (*device.0).CreateRootSignature(0, (*rsb.0).GetBufferPointer(), (*rsb.0).GetBufferSize(), &ID3D12RootSignature::uuidof(), &mut sig) }
-            .to_result_with(|| RootSignature(sig as _))
+        unsafe
+        {
+            (*device.0).CreateRootSignature(0, (*rsb.0).GetBufferPointer(), (*rsb.0).GetBufferSize(), &ID3D12RootSignature::uuidof(), &mut sig).to_result_with(|| RootSignature(sig as _))
+        }
     }
 }
 /// パイプラインステート
-pub struct PipelineState(*mut ID3D12PipelineState);
+pub struct PipelineState(*mut ID3D12PipelineState); HandleWrapper!(for PipelineState[ID3D12PipelineState] + FromRawHandle);
 impl Device
 {
     /// グラフィックス用パイプラインステートの作成
@@ -618,28 +607,28 @@ impl<'d> PipelineStateTracker<'d>
         self.1.PrimitiveTopologyType = _type; self
     }
     /// 頂点処理(シェーダと入力フォーマット)の設定
-    pub fn set_vertex_processing<Shader: AsRef<D3D12_SHADER_BYTECODE>>
+    pub fn set_vertex_processing<Shader: Borrow<D3D12_SHADER_BYTECODE>>
         (&mut self, shader: &Shader, input_format: &[D3D12_INPUT_ELEMENT_DESC]) -> &mut Self
     {
-        self.1.VS = *shader.as_ref();
+        self.1.VS = *shader.borrow();
         self.1.InputLayout = D3D12_INPUT_LAYOUT_DESC { pInputElementDescs: input_format.as_ptr(), NumElements: input_format.len() as _ };
         self
     }
     /// テッセレーション処理の設定
-    pub fn set_tessellation_processing<HShader: AsRef<D3D12_SHADER_BYTECODE>, DShader: AsRef<D3D12_SHADER_BYTECODE>>
+    pub fn set_tessellation_processing<HShader: Borrow<D3D12_SHADER_BYTECODE>, DShader: Borrow<D3D12_SHADER_BYTECODE>>
         (&mut self, hull: &HShader, domain: &DShader) -> &mut Self
     {
-        self.1.HS = *hull.as_ref(); self.1.DS = *domain.as_ref(); self
+        self.1.HS = *hull.borrow(); self.1.DS = *domain.borrow(); self
     }
     /// ジオメトリシェーダの設定
-    pub fn set_geometry_shader<Shader: AsRef<D3D12_SHADER_BYTECODE>>(&mut self, shader: &Shader) -> &mut Self
+    pub fn set_geometry_shader<Shader: Borrow<D3D12_SHADER_BYTECODE>>(&mut self, shader: &Shader) -> &mut Self
     {
-        self.1.GS = *shader.as_ref(); self
+        self.1.GS = *shader.borrow(); self
     }
     /// ピクセルシェーダの設定
-    pub fn set_pixel_shader<Shader: AsRef<D3D12_SHADER_BYTECODE>>(&mut self, shader: &Shader) -> &mut Self
+    pub fn set_pixel_shader<Shader: Borrow<D3D12_SHADER_BYTECODE>>(&mut self, shader: &Shader) -> &mut Self
     {
-        self.1.PS = *shader.as_ref(); self
+        self.1.PS = *shader.borrow(); self
     }
     /// 統一ブレンドステートの設定
     pub fn set_blend_state_common<RTBlend: AsRef<D3D12_RENDER_TARGET_BLEND_DESC>>
@@ -706,12 +695,12 @@ impl ShaderBinary
         })
     }
 }
-impl AsRef<D3D12_SHADER_BYTECODE> for ShaderBinary { fn as_ref(&self) -> &D3D12_SHADER_BYTECODE { &self.1 } }
+impl Borrow<D3D12_SHADER_BYTECODE> for ShaderBinary { fn borrow(&self) -> &D3D12_SHADER_BYTECODE { &self.1 } }
 impl Deref for ShaderBinary { type Target = [u8]; fn deref(&self) -> &[u8] { &self.0 } }
 /// ブレンディング
 pub struct Blending(D3D12_RENDER_TARGET_BLEND_DESC);
 unsafe impl MarkForSameBits<D3D12_RENDER_TARGET_BLEND_DESC> for Blending {}
-impl AsRef<D3D12_RENDER_TARGET_BLEND_DESC> for Blending { fn as_ref(&self) -> &D3D12_RENDER_TARGET_BLEND_DESC { &self.0 } }
+impl Borrow<D3D12_RENDER_TARGET_BLEND_DESC> for Blending { fn borrow(&self) -> &D3D12_RENDER_TARGET_BLEND_DESC { &self.0 } }
 impl Blending
 {
     /// 無効
@@ -737,7 +726,7 @@ impl Blending
 }
 
 /// 同期オブジェクト(フェンス)
-pub struct Fence(*mut ID3D12Fence);
+pub struct Fence(*mut ID3D12Fence); HandleWrapper!(for Fence[ID3D12Fence] + FromRawHandle);
 impl Device
 {
     /// フェンスを作成
@@ -761,8 +750,7 @@ impl Fence
 }
 
 /// グラフィックス操作用のコマンドリスト
-pub struct GraphicsCommandList(*mut ID3D12GraphicsCommandList);
-impl AsRawHandle<ID3D12CommandList> for GraphicsCommandList { fn as_raw_handle(&self) -> *mut ID3D12CommandList { self.0 as _ } }
+pub struct GraphicsCommandList(*mut ID3D12GraphicsCommandList); HandleWrapper!(for GraphicsCommandList[ID3D12GraphicsCommandList] + FromRawHandle);
 impl Device
 {
     /// グラフィックス操作用のコマンドリストを作る(初期状態では記録するようになってる)
@@ -776,11 +764,11 @@ impl Device
 impl GraphicsCommandList
 {
     /// 記録おしまい
-    pub fn close(&self) -> IOResult<()> { unsafe { (*self.0).Close() }.checked() }
+    pub fn close(&self) -> IOResult<()> { unsafe { (*self.0).Close().checked() } }
     /// コマンドリストの初期化
     pub fn reset(&self, alloc: &CommandAllocator, initial_ps: Option<&PipelineState>) -> IOResult<&Self>
     {
-        unsafe { (*self.0).Reset(alloc.0, initial_ps.map(|x| x.0).unwrap_or(std::ptr::null_mut())) }.to_result(self)
+        unsafe { (*self.0).Reset(alloc.0, initial_ps.map(|x| x.0).unwrap_or(std::ptr::null_mut())).to_result(self) }
     }
     /// リソースバリアを張る
     pub fn resource_barrier(&self, barriers: &[ResourceBarrier]) -> &Self
@@ -901,7 +889,7 @@ impl GraphicsCommandList
         unsafe { (*self.0).ExecuteBundle(cmd.0) }; self
     }
     /// コマンドインジェクション(チェーン中にifとかで分かれたい場合)
-    pub fn inject<F>(&self, injector: F) -> &Self where F: Fn(&Self) -> &Self
+    pub fn inject<F>(&self, injector: F) -> &Self where F: FnOnce(&Self) -> &Self
     {
         injector(self)
     }
@@ -995,6 +983,7 @@ impl RootConstant for u32 { fn passing_form(self) -> u32 { self } }
 /// リソースバリア
 pub struct ResourceBarrier(D3D12_RESOURCE_BARRIER);
 unsafe impl MarkForSameBits<D3D12_RESOURCE_BARRIER> for ResourceBarrier {}
+impl Borrow<D3D12_RESOURCE_BARRIER> for ResourceBarrier { fn borrow(&self) -> &D3D12_RESOURCE_BARRIER { &self.0 } }
 impl ResourceBarrier
 {
     /// エイリアシング(リソースの有効化)
@@ -1060,9 +1049,9 @@ pub struct Viewport
     pub min_depth: f32, pub max_depth: f32
 }
 unsafe impl MarkForSameBits<D3D12_VIEWPORT> for Viewport {}
-impl AsRef<D3D12_VIEWPORT> for Viewport
+impl Borrow<D3D12_VIEWPORT> for Viewport
 {
-    fn as_ref(&self) -> &D3D12_VIEWPORT { unsafe { std::mem::transmute(self) } }
+    fn borrow(&self) -> &D3D12_VIEWPORT { unsafe { std::mem::transmute(self) } }
 }
 impl Default for Viewport
 {
@@ -1084,10 +1073,6 @@ impl Viewport
         Viewport { left: self.left + amount, top: self.top + amount, width: self.width - amount, height: self.height - amount, .. *self }
     }
 }
-
-AutoRemover!(for Device[ID3D12Device], CommandQueue[ID3D12CommandQueue], CommandAllocator[ID3D12CommandAllocator]);
-AutoRemover!(for GraphicsCommandList[ID3D12GraphicsCommandList], DescriptorHeap[ID3D12DescriptorHeap], Heap[ID3D12Heap], Resource[ID3D12Resource]);
-AutoRemover!(for PipelineState[ID3D12PipelineState], RootSignature[ID3D12RootSignature], Fence[ID3D12Fence]);
 
 #[link(name = "d3d12")]
 extern "system"

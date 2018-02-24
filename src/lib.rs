@@ -114,11 +114,11 @@ macro_rules! HandleWrapper
         }
         // Refcounters
         AutoRemover!(for $t[$i]);
-        impl Clone for $t { fn clone(&self) -> Self { unsafe { (*self.0).AddRef() }; $t(self.0) } }
     };
     (for $t: ident[$i: ty] + FromRawHandle) =>
     {
         HandleWrapper!(for $t[$i]);
+        impl Clone for $t { fn clone(&self) -> Self { unsafe { (*self.0).AddRef() }; $t(self.0) } }
         impl FromRawHandle<$i> for $t { unsafe fn from_raw_handle(ptr: *mut $i) -> Self { $t(ptr) } }
     }
 }
