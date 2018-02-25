@@ -15,6 +15,9 @@ use std::ops::Deref;
 use metrics::*;
 use std::borrow::Borrow;
 
+pub use winapi::um::d3d12::{
+    D3D12_RESOURCE_ALLOCATION_INFO as ResourceAllocationInfo
+};
 pub use winapi::um::d3d12::D3D12_SHADER_BYTECODE as ShaderBytecode;
 pub use winapi::um::d3d12::D3D12_GRAPHICS_PIPELINE_STATE_DESC as GraphicsPipelineStateDesc;
 pub use winapi::um::d3d12::D3D12_RASTERIZER_DESC as RasterizerDesc;
@@ -278,6 +281,11 @@ pub enum OptimizedClearValue
 pub struct Resource(*mut ID3D12Resource); HandleWrapper!(for Resource[ID3D12Resource] + FromRawHandle);
 impl Device
 {
+    /// 該当リソースを割り当てるために必要なメモリのサイズとアラインメントを返す
+    pub fn get_resource_allocation_info(&self, desc: &[ResourceDesc]) -> ResourceAllocationInfo
+    {
+        unsafe { (*self.0).GetResourceAllocationInfo(0, desc.len() as _, desc.as_ptr() as _) }
+    }
     /// コミット済みリソースの作成
     pub fn new_resource_committed(&self, heap_props: &HeapProperty, desc: &ResourceDesc, initial_state: ResourceState, clear_value: Option<&OptimizedClearValue>)
         -> IOResult<Resource>
