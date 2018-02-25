@@ -279,10 +279,10 @@ pub struct Resource(*mut ID3D12Resource); HandleWrapper!(for Resource[ID3D12Reso
 impl Device
 {
     /// コミット済みリソースの作成
-    pub fn new_resource_committed(&self, heap_props: &HeapProperty, desc: &ResourceDesc, initial_state: ResourceState, clear_value: Option<OptimizedClearValue>)
+    pub fn new_resource_committed(&self, heap_props: &HeapProperty, desc: &ResourceDesc, initial_state: ResourceState, clear_value: Option<&OptimizedClearValue>)
         -> IOResult<Resource>
     {
-        let opt_cv = clear_value.map(|cv| match cv
+        let opt_cv = clear_value.map(|cv| match *cv
         {
             OptimizedClearValue::Color(fmt, r, g, b, a) => D3D12_CLEAR_VALUE { Format: fmt, u: unsafe { std::mem::transmute([r, g, b, a]) } },
             OptimizedClearValue::DepthStencil(fmt, d, s) =>
