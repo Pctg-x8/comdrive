@@ -14,6 +14,7 @@ use std::path::Path;
 use std::ops::Deref;
 use metrics::*;
 use std::borrow::Borrow;
+use std::mem::size_of;
 
 pub use winapi::um::d3d12::{
     D3D12_RESOURCE_ALLOCATION_INFO as ResourceAllocationInfo
@@ -870,7 +871,7 @@ impl GraphicsCommandList
         unsafe { (*self.0).IASetPrimitiveTopology(tp) }; self
     }
     /// 頂点バッファの設定
-    pub fn set_vertex_buffers(&self, slot_from: u32, buffers: &[D3D12_VERTEX_BUFFER_VIEW]) -> &Self
+    pub fn set_vertex_buffers(&self, slot_from: u32, buffers: &[VertexBufferView]) -> &Self
     {
         unsafe { (*self.0).IASetVertexBuffers(slot_from, buffers.len() as _, buffers.as_ptr()) }; self
     }
@@ -1026,20 +1027,20 @@ impl ResourceBarrier
 }
 
 /// 頂点バッファビューの作成
-pub fn vertex_buffer_view<T>(location: GraphicsVirtualPtr, element_count: usize) -> D3D12_VERTEX_BUFFER_VIEW
+pub fn vertex_buffer_view<T>(location: GraphicsVirtualPtr, element_count: usize) -> VertexBufferView
 {
-    D3D12_VERTEX_BUFFER_VIEW
+    VertexBufferView
     {
         BufferLocation: location.0, StrideInBytes: std::mem::size_of::<T>() as _,
         SizeInBytes: (std::mem::size_of::<T>() * element_count) as _
     }
 }
 /// インデックスバッファビューの作成
-pub fn index_buffer_view(location: GraphicsVirtualPtr, element_count: usize) -> D3D12_INDEX_BUFFER_VIEW
+pub fn index_buffer_view(location: GraphicsVirtualPtr, element_count: usize) -> IndexBufferView
 {
-    D3D12_INDEX_BUFFER_VIEW
+    IndexBufferView
     {
-        BufferLocation: location.0, SizeInBytes: (2 * element_count) as _, Format: DXGI_FORMAT_R16_UINT
+        BufferLocation: location.0, SizeInBytes: (size_of::<u16>() * element_count) as _, Format: DXGI_FORMAT_R16_UINT
     }
 }
 /// GPU仮想アドレスのラップ
