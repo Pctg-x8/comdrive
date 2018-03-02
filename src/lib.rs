@@ -66,11 +66,11 @@ impl UnivString for WideCString { fn to_wcstr(&self) -> Cow<WideCStr> { self.as_
 /// IUnknownにへんかんできることを保証(AsRawHandle<IUnknown>の特殊化)
 pub trait AsIUnknown { fn as_iunknown(&self) -> *mut IUnknown; }
 /// 特定のハンドルポインタに変換できることを保証
-pub trait AsRawHandle<I: Interface> { fn as_raw_handle(&self) -> *mut I; }
+pub trait AsRawHandle<I> { fn as_raw_handle(&self) -> *mut I; }
 /// 特定のインターフェイスハンドルであり、別インターフェイスをクエリすることができる
 pub trait Handle : AsRawHandle<<Self as Handle>::RawType> + AsIUnknown
 {
-    type RawType : Interface;
+    type RawType: Interface;
     fn query_interface<Q: Handle>(&self) -> IOResult<Q> where Q: FromRawHandle<<Q as Handle>::RawType>;
 }
 /// 生のハンドルポインタから構成できる
@@ -91,7 +91,7 @@ macro_rules! AutoRemover
                         println!("trace_releasing: Dropping {}({}@{:x}) outstanding refcount: {}", stringify!($t), stringify!($ti), self.0 as usize, rc);
                     }
                     else { unsafe { p.Release(); } }
-                    self.0 = std::ptr::null_mut();
+                    self.0 = ::std::ptr::null_mut();
                 }
             }
         })*
@@ -101,15 +101,15 @@ macro_rules! HandleWrapper
 {
     (for $t: ident[$i: ty]) =>
     {
-        impl AsIUnknown for $t { fn as_iunknown(&self) -> *mut IUnknown { self.0 as _ } }
-        impl AsRawHandle<$i> for $t { fn as_raw_handle(&self) -> *mut $i { self.0 } }
-        impl Handle for $t
+        impl ::AsIUnknown for $t { fn as_iunknown(&self) -> *mut IUnknown { self.0 as _ } }
+        impl ::AsRawHandle<$i> for $t { fn as_raw_handle(&self) -> *mut $i { self.0 } }
+        impl ::Handle for $t
         {
             type RawType = $i;
-            fn query_interface<Q: Handle>(&self) -> IOResult<Q> where Q: FromRawHandle<<Q as Handle>::RawType>
+            fn query_interface<Q: ::Handle>(&self) -> IOResult<Q> where Q: ::FromRawHandle<<Q as ::Handle>::RawType>
             {
-                let mut handle = std::ptr::null_mut();
-                unsafe { (*self.0).QueryInterface(&Q::RawType::uuidof(), &mut handle).to_result_with(|| Q::from_raw_handle(handle as _)) }
+                let mut handle = ::std::ptr::null_mut();
+                unsafe { (*self.0).QueryInterface(&<Q::RawType as ::winapi::Interface>::uuidof(), &mut handle).to_result_with(|| Q::from_raw_handle(handle as _)) }
             }
         }
         // Refcounters
@@ -119,7 +119,7 @@ macro_rules! HandleWrapper
     {
         HandleWrapper!(for $t[$i]);
         impl Clone for $t { fn clone(&self) -> Self { unsafe { (*self.0).AddRef() }; $t(self.0) } }
-        impl FromRawHandle<$i> for $t { unsafe fn from_raw_handle(ptr: *mut $i) -> Self { $t(ptr) } }
+        impl ::FromRawHandle<$i> for $t { unsafe fn from_raw_handle(ptr: *mut $i) -> Self { $t(ptr) } }
     }
 }
 
@@ -151,6 +151,7 @@ pub mod d2;
 pub mod dcomp;
 pub mod dwrite;
 pub mod imaging;
+pub mod uianimation;
 
 pub mod traits
 {
@@ -163,11 +164,16 @@ pub mod submods
 {
     pub use super::{d3d, dxgi, d3d11, d3d12, d2, dcomp, dwrite, imaging};
 }
-}
 
+use winapi::shared::guiddef::GUID;
 /// CoCreateInstance helper(Create InterProcess-Server Object)
-pub(crate) fn co_create_inproc_instance<I: Interface + ?Sized>(clsid: &GUID) -> IOResult<*mut I>
+pub(crate) fn co_create_inproc_instance<I: Interface>(clsid: &GUID) -> IOResult<*mut I>
 {
-    let mut p = null_mut();
-    unsafe { CoCreateInstance(clsid, null_mut(), CLSCTX_INPROC_SERVER, I::uuidof(), &mut p).to_result(p) }
+    use winapi::shared::wtypesbase::CLSCTX_INPROC_SERVER;
+    let mut p = std::ptr::null_mut();
+    unsafe
+    {
+        imaging::CoCreateInstance(clsid, std::ptr::null_mut(),
+            CLSCTX_INPROC_SERVER, &I::uuidof(), &mut p).to_result(p as _)
+    }
 }
