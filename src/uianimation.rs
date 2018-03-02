@@ -87,7 +87,7 @@ impl Timer
 }
 
 #[allow(non_snake_case)]
-#[repr(C)] struct IUIAnimationTimerUpdateHandlerVtbl
+#[repr(C)] pub struct IUIAnimationTimerUpdateHandlerVtbl
 {
     pub QueryInterface: extern "system" fn(This: *mut IUIAnimationTimerUpdateHandler, riid: REFIID, ppvObject: *mut *mut c_void) -> HRESULT,
     pub AddRef: extern "system" fn(This: *mut IUIAnimationTimerUpdateHandler) -> ULONG,
@@ -99,7 +99,7 @@ impl Timer
 #[repr(C)] pub struct IUIAnimationTimerUpdateHandler(*const IUIAnimationTimerUpdateHandlerVtbl);
 
 #[allow(non_snake_case)]
-#[repr(C)] struct IUIAnimationTimerClientEventHandlerVtbl
+#[repr(C)] pub struct IUIAnimationTimerClientEventHandlerVtbl
 {
     pub QueryInterface: extern "system" fn(This: *mut IUIAnimationTimerClientEventHandler, riid: REFIID, ppvObject: *mut *mut c_void) -> HRESULT,
     pub AddRef: extern "system" fn(This: *mut IUIAnimationTimerClientEventHandler) -> ULONG,
@@ -109,7 +109,7 @@ impl Timer
 #[repr(C)] pub struct IUIAnimationTimerClientEventHandler(*const IUIAnimationTimerClientEventHandlerVtbl);
 
 #[allow(non_snake_case)]
-#[repr(C)] struct IUIAnimationTimerEventHandlerVtbl
+#[repr(C)] pub struct IUIAnimationTimerEventHandlerVtbl
 {
     pub QueryInterface: extern "system" fn(This: *mut IUIAnimationTimerEventHandler, riid: REFIID, ppvObject: *mut *mut c_void) -> HRESULT,
     pub AddRef: extern "system" fn(This: *mut IUIAnimationTimerEventHandler) -> ULONG,
