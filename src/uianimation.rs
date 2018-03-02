@@ -102,6 +102,17 @@ impl IUIAnimationTimerUpdateHandler
     #[allow(non_snake_case)]
     pub fn AddRef(&mut self) -> ULONG { unsafe { ((*self.0).AddRef)(self) } }
 }
+/// 195509B7-5D5E-4e3e-B278-EE3759B367AD
+impl ::winapi::Interface for IUIAnimationTimerUpdateHandler
+{
+    fn uuidof() -> GUID
+    {
+        GUID
+        {
+            Data1: 0x195509b7, Data2: 0x5d5e, Data3: 0x4e3e, Data4: [0xb2, 0x78, 0xee, 0x37, 0x59, 0xb3, 0x67, 0xad]
+        }
+    }
+}
 
 #[allow(non_snake_case)]
 #[repr(C)] pub struct IUIAnimationTimerClientEventHandlerVtbl
