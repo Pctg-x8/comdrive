@@ -97,6 +97,11 @@ impl Timer
     pub ClearTimerClientEventHandler: extern "system" fn(This: *mut IUIAnimationTimerUpdateHandler) -> HRESULT
 }
 #[repr(C)] pub struct IUIAnimationTimerUpdateHandler(*const IUIAnimationTimerUpdateHandlerVtbl);
+impl IUIAnimationTimerUpdateHandler
+{
+    #[allow(non_snake_case)]
+    pub fn AddRef(&mut self) -> ULONG { unsafe { ((*self.0).AddRef)(self) } }
+}
 
 #[allow(non_snake_case)]
 #[repr(C)] pub struct IUIAnimationTimerClientEventHandlerVtbl
