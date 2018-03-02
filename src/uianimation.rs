@@ -101,6 +101,8 @@ impl IUIAnimationTimerUpdateHandler
 {
     #[allow(non_snake_case)]
     pub fn AddRef(&mut self) -> ULONG { unsafe { ((*self.0).AddRef)(self) } }
+    #[allow(non_snake_case)]
+    pub fn Release(&mut self) -> ULONG { unsafe { ((*self.0).Release)(self) } }
 }
 /// 195509B7-5D5E-4e3e-B278-EE3759B367AD
 impl ::winapi::Interface for IUIAnimationTimerUpdateHandler
