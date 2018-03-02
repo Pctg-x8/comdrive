@@ -125,6 +125,13 @@ impl ::winapi::Interface for IUIAnimationTimerUpdateHandler
     pub OnTimerClientStatusChanged: extern "system" fn(This: *mut IUIAnimationTimerClientEventHandler, newStatus: TimerClientStatus, previousStatus: TimerClientStatus) -> HRESULT
 }
 #[repr(C)] pub struct IUIAnimationTimerClientEventHandler(*const IUIAnimationTimerClientEventHandlerVtbl);
+impl IUIAnimationTimerClientEventHandler
+{
+    #[allow(non_snake_case)]
+    pub fn AddRef(&mut self) -> ULONG { unsafe { ((*self.0).AddRef)(self) } }
+    #[allow(non_snake_case)]
+    pub fn Release(&mut self) -> ULONG { unsafe { ((*self.0).Release)(self) } }
+}
 
 #[allow(non_snake_case)]
 #[repr(C)] pub struct IUIAnimationTimerEventHandlerVtbl
