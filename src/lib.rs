@@ -163,3 +163,11 @@ pub mod submods
 {
     pub use super::{d3d, dxgi, d3d11, d3d12, d2, dcomp, dwrite, imaging};
 }
+}
+
+/// CoCreateInstance helper(Create InterProcess-Server Object)
+pub(crate) fn co_create_inproc_instance<I: Interface + ?Sized>(clsid: &GUID) -> IOResult<*mut I>
+{
+    let mut p = null_mut();
+    unsafe { CoCreateInstance(clsid, null_mut(), CLSCTX_INPROC_SERVER, I::uuidof(), &mut p).to_result(p) }
+}
