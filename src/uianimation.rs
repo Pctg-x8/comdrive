@@ -63,7 +63,7 @@ impl Timer
     {
         ::co_create_inproc_instance(&CLSID_UIAnimation).map(Timer)
     }
-    pub fn set_update_handler(&self, handler: Option<&AsRawHandle<IUIAnimationTimerUpdateHandler>>,
+    pub fn set_update_handler(&mut self, handler: Option<&AsRawHandle<IUIAnimationTimerUpdateHandler>>,
         idle_behavior: IdleBehavior) -> IOResult<()>
     {
         unsafe
@@ -71,6 +71,18 @@ impl Timer
             ((*(*self.0).0).SetTimerUpdateHandler)(self.0,
                 handler.map(AsRawHandle::as_raw_handle).unwrap_or(null_mut()), idle_behavior as _).checked()
         }
+    }
+    pub fn enable(&mut self) -> IOResult<()> { unsafe { ((*(*self.0).0).Enable)(self.0).checked() } }
+    pub fn disable(&mut self) -> IOResult<()> { unsafe { ((*(*self.0).0).Disable)(self.0).checked() } }
+    pub fn is_enabled(&self) -> IOResult<()> { unsafe { ((*(*self.0).0).IsEnabled)(self.0).checked() } }
+    pub fn time(&self) -> IOResult<Seconds>
+    {
+        let mut secs = 0.0;
+        unsafe { ((*(*self.0).0).GetTime)(self.0, &mut secs).to_result(secs) }
+    }
+    pub fn set_frame_rate_threshold(&mut self, fps: u32) -> IOResult<()>
+    {
+        unsafe { ((*(*self.0).0).SetFrameRateThreshold)(self.0, fps).checked() }
     }
 }
 
