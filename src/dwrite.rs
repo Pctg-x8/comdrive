@@ -2,9 +2,11 @@
 
 use winapi::um::dwrite::*;
 use winapi::um::dwrite_1::*;
+use winapi::shared::minwindef::FLOAT;
 use super::*;
 use metrics::*;
 use winapi::ctypes::c_void;
+pub use winapi::um::dwrite::DWRITE_GLYPH_OFFSET as GlyphOffset;
 
 pub use winapi::um::dwrite::DWRITE_TEXT_METRICS as TextMetrics;
 #[repr(C)] #[derive(Debug, Clone, PartialEq, Eq, Copy)]
@@ -101,6 +103,84 @@ impl TextLayout
         unsafe
         {
             (*self.0).SetCharacterSpacing(space / 2.0, space / 2.0, space, DWRITE_TEXT_RANGE { startPosition: 0, length: std::u32::MAX }).checked()
+        }
+    }
+}
+
+/// フォントファミリー
+pub struct FontFamily(*mut IDWriteFontFamily); HandleWrapper!(for FontFamily[IDWriteFontFamily]);
+impl FontCollection
+{
+    pub fn find_family_name<S: ::UnivString + ?Sized>(&self, name: &S) -> IOResult<Option<u32>>
+    {
+        let (mut index, mut exists) = (0, 0);
+        let n = name.to_wcstr();
+        unsafe
+        {
+            (*self.0).FindFamilyName(n.as_ptr(), &mut index, &mut exists)
+                .to_result_with(|| if exists == 0 { None } else { Some(index) })
+        }
+    }
+    pub fn font_family(&self, index: u32) -> IOResult<FontFamily>
+    {
+        let mut handle = std::ptr::null_mut();
+        unsafe { (*self.0).GetFontFamily(index, &mut handle).to_result_with(|| FontFamily(handle)) }
+    }
+}
+impl Deref for FontFamily
+{
+    type Target = FontList; fn deref(&self) -> &FontList { unsafe { std::mem::transmute(self) } }
+}
+
+/// フォントリスト
+pub struct FontList(*mut IDWriteFontList); HandleWrapper!(for FontList[IDWriteFontList]);
+
+/// フォント
+pub struct Font(*mut IDWriteFont); HandleWrapper!(for Font[IDWriteFont]);
+impl FontList
+{
+    pub fn font(&self, index: u32) -> IOResult<Font>
+    {
+        let mut handle = std::ptr::null_mut();
+        unsafe { (*self.0).GetFont(index, &mut handle).to_result_with(|| Font(handle)) }
+    }
+}
+
+/// フォントフェイス
+pub struct FontFace(*mut IDWriteFontFace); HandleWrapper!(for FontFace[IDWriteFontFace]);
+impl Font
+{
+    pub fn new_font_face(&self) -> IOResult<FontFace>
+    {
+        let mut handle = std::ptr::null_mut();
+        unsafe { (*self.0).CreateFontFace(&mut handle).to_result_with(|| FontFace(handle)) }
+    }
+}
+impl FontFace
+{
+    pub fn glyph_indices(&self, codepoints: &[char]) -> IOResult<Vec<u16>>
+    {
+        let mut indices = Vec::with_capacity(codepoints.len()); unsafe { indices.set_len(codepoints.len()); }
+        unsafe
+        {
+            (*self.0).GetGlyphIndices(codepoints.as_ptr() as _, codepoints.len() as _, indices.as_mut_ptr())
+                .to_result(indices)
+        }
+    }
+    /// グリフ列のアウトラインを計算し、指定されたシンクオブジェクトにコールバックする
+    pub fn sink_glyph_run_outline<S: AsRawHandle<IDWriteGeometrySink>>(
+        &self, emsize: FLOAT, indices: &[u16],
+        advances: Option<&[FLOAT]>, offsets: Option<&[GlyphOffset]>,
+        sideways: bool, rtl: bool, sink: &mut S) -> IOResult<()>
+    {
+        assert!(advances.as_ref().map_or(true, |v| v.len() == indices.len()), "Mismatched a number of advances");
+        assert!(offsets.as_ref().map_or(true, |v| v.len() == indices.len()), "Mismatched a number of offsets");
+        unsafe
+        {
+            (*self.0).GetGlyphRunOutline(emsize, indices.as_ptr(),
+                advances.map(|x| x.as_ptr()).unwrap_or(std::ptr::null()),
+                offsets.map(|x| x.as_ptr()).unwrap_or(std::ptr::null()),
+                indices.len() as _, sideways as _, rtl as _, sink.as_raw_handle()).checked()
         }
     }
 }
