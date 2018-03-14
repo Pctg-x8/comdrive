@@ -66,7 +66,7 @@ impl UnivString for WideCString { fn to_wcstr(&self) -> Cow<WideCStr> { self.as_
 /// IUnknownにへんかんできることを保証(AsRawHandle<IUnknown>の特殊化)
 pub trait AsIUnknown { fn as_iunknown(&self) -> *mut IUnknown; }
 /// 特定のハンドルポインタに変換できることを保証
-pub trait AsRawHandle<I> { fn as_raw_handle(&self) -> *mut I; }
+pub unsafe trait AsRawHandle<I> { fn as_raw_handle(&self) -> *mut I; }
 /// 特定のインターフェイスハンドルであり、別インターフェイスをクエリすることができる
 pub trait Handle : AsRawHandle<<Self as Handle>::RawType> + AsIUnknown
 {
@@ -102,7 +102,7 @@ macro_rules! HandleWrapper
     (for $t: ident[$i: ty]) =>
     {
         impl ::AsIUnknown for $t { fn as_iunknown(&self) -> *mut IUnknown { self.0 as _ } }
-        impl ::AsRawHandle<$i> for $t { fn as_raw_handle(&self) -> *mut $i { self.0 } }
+        unsafe impl ::AsRawHandle<$i> for $t { fn as_raw_handle(&self) -> *mut $i { self.0 } }
         impl ::Handle for $t
         {
             type RawType = $i;
