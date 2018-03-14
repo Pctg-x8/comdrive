@@ -6,6 +6,8 @@ use winapi::um::d3d11::*;
 use winapi::um::d3dcommon::*;
 use winapi::shared::dxgiformat::*;
 use metrics::MarkForSameBits;
+use std::ptr::{null, null_mut};
+use std::mem::size_of;
 
 pub use winapi::um::d3d11::D3D11_VIEWPORT as Viewport;
 pub use winapi::um::d3dcommon::D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP as TriangleStripTopo;
@@ -13,13 +15,11 @@ pub use winapi::um::d3dcommon::D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP as TriangleS
 pub type GenericResult<T> = std::result::Result<T, Box<std::error::Error>>;
 
 /// Driver object for ID3D11Device
-pub struct Device(*mut ID3D11Device);
+pub struct Device(*mut ID3D11Device); HandleWrapper!(for Device[ID3D11Device] + FromRawHandle);
 /// Driver object for ID3D11DeviceContext for Immediate Submission
-pub struct ImmediateContext(*mut ID3D11DeviceContext);
+pub struct ImmediateContext(*mut ID3D11DeviceContext); HandleWrapper!(for ImmediateContext[ID3D11DeviceContext] + FromRawHandle);
 /// Driver object for ID3D11DeviceContext for Deferred Submission
-pub struct DeferredContext(*mut ID3D11DeviceContext);
-impl FromRawHandle<ID3D11Device> for Device { unsafe fn from_raw_handle(h: *mut ID3D11Device) -> Self { Device(h) } }
-impl FromRawHandle<ID3D11DeviceContext> for ImmediateContext { unsafe fn from_raw_handle(h: *mut ID3D11DeviceContext) -> Self { ImmediateContext(h) } }
+pub struct DeferredContext(*mut ID3D11DeviceContext); HandleWrapper!(for DeferredContext[ID3D11DeviceContext] + FromRawHandle);
 
 impl Device
 {
@@ -27,27 +27,17 @@ impl Device
     pub fn new(adapter: Option<&dxgi::Adapter>, compatible_d2d: bool) -> IOResult<(Device, ImmediateContext)>
     {
         let flags = if compatible_d2d { D3D11_CREATE_DEVICE_BGRA_SUPPORT } else { 0 } | D3D11_CREATE_DEVICE_DEBUG;
-        let (mut hdev, mut himm) = (std::ptr::null_mut(), std::ptr::null_mut());
-        unsafe { D3D11CreateDevice(adapter.map(AsRawHandle::as_raw_handle).unwrap_or(std::ptr::null_mut()),
-            if adapter.is_some() { D3D_DRIVER_TYPE_UNKNOWN } else { D3D_DRIVER_TYPE_HARDWARE }, std::ptr::null_mut(), flags, std::ptr::null(), 0,
-            D3D11_SDK_VERSION, &mut hdev, std::ptr::null_mut(), &mut himm) }.to_result_with(|| (Device(hdev), ImmediateContext(himm)))
+        let (mut hdev, mut himm) = (null_mut(), null_mut());
+        unsafe
+        {
+            D3D11CreateDevice(adapter.map(AsRawHandle::as_raw_handle).unwrap_or_else(null_mut),
+                if adapter.is_some() { D3D_DRIVER_TYPE_UNKNOWN } else { D3D_DRIVER_TYPE_HARDWARE },
+                null_mut(), flags, null(), 0, D3D11_SDK_VERSION, &mut hdev, null_mut(), &mut himm)
+                    .to_result_with(|| (Device(hdev), ImmediateContext(himm)))
+        }
     }
 }
-impl dxgi::DeviceChild for Device
-{
-    fn parent(&self) -> IOResult<dxgi::Device> { self.query_interface() }
-}
-impl AsIUnknown for Device { fn as_iunknown(&self) -> *mut IUnknown { self.0 as _ } }
-impl AsRawHandle<ID3D11Device> for Device { fn as_raw_handle(&self) -> *mut ID3D11Device { self.0 } }
-impl Handle for Device
-{
-    type RawType = ID3D11Device;
-    fn query_interface<Q: Handle>(&self) -> IOResult<Q> where Q: FromRawHandle<<Q as Handle>::RawType>
-    {
-        let mut handle: *mut Q::RawType = std::ptr::null_mut();
-        unsafe { (*self.0).QueryInterface(&Q::RawType::uuidof(), std::mem::transmute(&mut handle)) }.to_result_with(|| unsafe { Q::from_raw_handle(handle) })
-    }
-}
+impl dxgi::DeviceChild for Device { fn parent(&self) -> IOResult<dxgi::Device> { self.query_interface() } }
 impl ImmediateContext
 {
     pub fn flush(&self) { unsafe { (*self.0).Flush() }; }
@@ -71,19 +61,7 @@ impl BindFlags
 unsafe impl MarkForSameBits<D3D11_BIND_FLAG> for BindFlags {}
 
 /// Driver object for ID3D11Texture2D
-pub struct Texture2D(*mut ID3D11Texture2D);
-impl Handle for Texture2D
-{
-    type RawType = ID3D11Texture2D;
-    fn query_interface<Q: Handle>(&self) -> IOResult<Q> where Q: FromRawHandle<<Q as Handle>::RawType>
-    {
-        let mut handle: *mut Q::RawType = std::ptr::null_mut();
-        unsafe { (*self.0).QueryInterface(&Q::RawType::uuidof(), std::mem::transmute(&mut handle)) }.to_result_with(|| unsafe { Q::from_raw_handle(handle) })
-    }
-}
-impl AsRawHandle<ID3D11Texture2D> for Texture2D { fn as_raw_handle(&self) -> *mut ID3D11Texture2D { self.0 } }
-impl FromRawHandle<ID3D11Texture2D> for Texture2D { unsafe fn from_raw_handle(h: *mut ID3D11Texture2D) -> Self { Texture2D(h) } }
-impl AsIUnknown for Texture2D { fn as_iunknown(&self) -> *mut IUnknown { self.0 as _ } }
+pub struct Texture2D(*mut ID3D11Texture2D); HandleWrapper!(for Texture2D[ID3D11Texture2D] + FromRawHandle);
 impl dxgi::SurfaceChild for Texture2D { fn base(&self) -> IOResult<dxgi::Surface> { self.query_interface() } }
 pub struct TextureDesc2D(D3D11_TEXTURE2D_DESC);
 impl TextureDesc2D
@@ -116,8 +94,7 @@ impl TextureDesc2D
 }
 
 /// バッファ(GPU VRAM上のデータブロック)
-pub struct Buffer(*mut ID3D11Buffer, usize);
-impl AsRawHandle<ID3D11Buffer> for Buffer { fn as_raw_handle(&self) -> *mut ID3D11Buffer { self.0 } }
+pub struct Buffer(*mut ID3D11Buffer, usize); HandleWrapper!(for Buffer[ID3D11Buffer]);
 impl Device
 {
     /// 不変バッファの作成
@@ -125,48 +102,54 @@ impl Device
     {
         let desc = D3D11_BUFFER_DESC
         {
-            BindFlags: bind_flags.0, ByteWidth: (std::mem::size_of::<T>() * initial_data.len()) as _,
-            StructureByteStride: std::mem::size_of::<f32>() as _, Usage: D3D11_USAGE_IMMUTABLE,
+            BindFlags: bind_flags.0, ByteWidth: (size_of::<T>() * initial_data.len()) as _,
+            StructureByteStride: size_of::<f32>() as _, Usage: D3D11_USAGE_IMMUTABLE,
             CPUAccessFlags: 0, MiscFlags: 0
         };
         let initial_data = D3D11_SUBRESOURCE_DATA { pSysMem: initial_data.as_ptr() as _, SysMemPitch: 0, SysMemSlicePitch: 0 };
-        let mut handle = std::ptr::null_mut();
-        unsafe { (*self.0).CreateBuffer(&desc, &initial_data, &mut handle) }.to_result_with(|| Buffer(handle, std::mem::size_of::<T>()))
+        let mut handle = null_mut();
+        unsafe
+        {
+            (*self.0).CreateBuffer(&desc, &initial_data, &mut handle).to_result_with(|| Buffer(handle, size_of::<T>()))
+        }
     }
     /// 不変バッファの作成
     pub fn new_buffer<T>(&self, bind_flags: BindFlags, initial_data: &T) -> IOResult<Buffer>
     {
         let desc = D3D11_BUFFER_DESC
         {
-            BindFlags: bind_flags.0, ByteWidth: std::mem::size_of::<T>() as _,
-            StructureByteStride: std::mem::size_of::<f32>() as _, Usage: D3D11_USAGE_IMMUTABLE,
+            BindFlags: bind_flags.0, ByteWidth: size_of::<T>() as _,
+            StructureByteStride: size_of::<f32>() as _, Usage: D3D11_USAGE_IMMUTABLE,
             CPUAccessFlags: 0, MiscFlags: 0
         };
         let initial_data = D3D11_SUBRESOURCE_DATA { pSysMem: initial_data as *const _ as *const _, SysMemPitch: 0, SysMemSlicePitch: 0 };
-        let mut handle = std::ptr::null_mut();
-        unsafe { (*self.0).CreateBuffer(&desc, &initial_data, &mut handle) }.to_result_with(|| Buffer(handle, std::mem::size_of::<T>()))
+        let mut handle = null_mut();
+        unsafe
+        {
+            (*self.0).CreateBuffer(&desc, &initial_data, &mut handle).to_result_with(|| Buffer(handle, size_of::<T>()))
+        }
     }
     /// UpdateSubresource可能なバッファの作成
     pub fn new_buffer_update(&self, bind_flags: BindFlags, size: usize) -> IOResult<Buffer>
     {
         let desc = D3D11_BUFFER_DESC
         {
-            BindFlags: bind_flags.0, ByteWidth: size as _, StructureByteStride: std::mem::size_of::<f32>() as _,
+            BindFlags: bind_flags.0, ByteWidth: size as _, StructureByteStride: size_of::<f32>() as _,
             Usage: D3D11_USAGE_DEFAULT, CPUAccessFlags: 0, MiscFlags: 0
         };
-        let mut handle = std::ptr::null_mut();
-        unsafe { (*self.0).CreateBuffer(&desc, std::ptr::null(), &mut handle) }.to_result_with(|| Buffer(handle, 0))
+        let mut handle = null_mut();
+        unsafe { (*self.0).CreateBuffer(&desc, null(), &mut handle).to_result_with(|| Buffer(handle, 0)) }
     }
     /// 可変バッファの作成
     pub fn new_buffer_mut(&self, bind_flags: BindFlags, size: usize) -> IOResult<Buffer>
     {
         let desc = D3D11_BUFFER_DESC
         {
-            BindFlags: bind_flags.0, ByteWidth: size as _, StructureByteStride: std::mem::size_of::<f32>() as _,
+            BindFlags: bind_flags.0, ByteWidth: size as _, StructureByteStride: size_of::<f32>() as _,
             Usage: D3D11_USAGE_DEFAULT, CPUAccessFlags: D3D11_CPU_ACCESS_WRITE, MiscFlags: 0
         };
-        let mut handle = std::ptr::null_mut();
-        unsafe { (*self.0).CreateBuffer(&desc, std::ptr::null(), &mut handle) }.to_result_with(|| Buffer(handle, 0))
+        let mut handle = null_mut();
+        unsafe { (*self.0).CreateBuffer(&desc, null(), &mut handle).to_result_with(|| Buffer(handle, 0)) }
     }
 }
 
@@ -176,7 +159,7 @@ impl Resource for Texture2D { fn as_raw_resource_ptr(&self) -> *mut ID3D11Resour
 impl Resource for Buffer { fn as_raw_resource_ptr(&self) -> *mut ID3D11Resource { self.0 as _ } }
 
 /// 入力レイアウト
-pub struct InputLayout(*mut ID3D11InputLayout);
+pub struct InputLayout(*mut ID3D11InputLayout); HandleWrapper!(for InputLayout[ID3D11InputLayout]);
 impl Device
 {
     /// 入力レイアウトの作成
@@ -241,32 +224,31 @@ impl SamplerStateBuilder
     }
 }
 /// サンプラーステート
-pub struct SamplerState(*mut ID3D11SamplerState);
-impl AsRawHandle<ID3D11SamplerState> for SamplerState { fn as_raw_handle(&self) -> *mut ID3D11SamplerState { self.0 } }
+pub struct SamplerState(*mut ID3D11SamplerState); HandleWrapper!(for SamplerState[ID3D11SamplerState]);
 
 /// 頂点シェーダ
-pub struct VertexShader(*mut ID3D11VertexShader);
+pub struct VertexShader(*mut ID3D11VertexShader); HandleWrapper!(for VertexShader[ID3D11VertexShader]);
 /// ピクセルシェーダ
-pub struct PixelShader(*mut ID3D11PixelShader);
+pub struct PixelShader(*mut ID3D11PixelShader); HandleWrapper!(for PixelShader[ID3D11PixelShader]);
 impl Device
 {
     /// 頂点シェーダの作成
     pub fn new_vertex_shader<Source: d3d::ShaderSource + ?Sized>(&self, source: &Source) -> GenericResult<VertexShader>
     {
-        source.binary().map_err(From::from).and_then(|b|
+        source.binary().map_err(From::from).and_then(|b| unsafe
         {
-            let mut handle = std::ptr::null_mut();
-            unsafe { (*self.0).CreateVertexShader(b.as_ptr() as _, b.len() as _, std::ptr::null_mut(), &mut handle) }
+            let mut handle = null_mut();
+            (*self.0).CreateVertexShader(b.as_ptr() as _, b.len() as _, null_mut(), &mut handle)
                 .to_result_with(|| VertexShader(handle)).map_err(From::from)
         })
     }
     /// ピクセルシェーダの作成
     pub fn new_pixel_shader<Source: d3d::ShaderSource + ?Sized>(&self, source: &Source) -> GenericResult<PixelShader>
     {
-        source.binary().map_err(From::from).and_then(|b|
+        source.binary().map_err(From::from).and_then(|b| unsafe
         {
-            let mut handle = std::ptr::null_mut();
-            unsafe { (*self.0).CreatePixelShader(b.as_ptr() as _, b.len() as _, std::ptr::null_mut(), &mut handle) }
+            let mut handle = null_mut();
+            (*self.0).CreatePixelShader(b.as_ptr() as _, b.len() as _, null_mut(), &mut handle)
                 .to_result_with(|| PixelShader(handle)).map_err(From::from)
         })
     }
@@ -287,30 +269,35 @@ impl ViewDescriptable<D3D11_RENDER_TARGET_VIEW_DESC> for Texture2D
 }
 
 /// レンダーターゲットビュー
-pub struct RenderTargetView(*mut ID3D11RenderTargetView);
-impl AsRawHandle<ID3D11RenderTargetView> for RenderTargetView { fn as_raw_handle(&self) -> *mut ID3D11RenderTargetView { self.0 } }
+pub struct RenderTargetView(*mut ID3D11RenderTargetView); HandleWrapper!(for RenderTargetView[ID3D11RenderTargetView]);
 impl Device
 {
     /// レンダーターゲットビューをつくる！
     pub fn new_render_target_view<R: ViewDescriptable<D3D11_RENDER_TARGET_VIEW_DESC> + Resource>(&self, resource: &R) -> IOResult<RenderTargetView>
     {
-        let mut handle = std::ptr::null_mut();
-        unsafe { (*self.0).CreateRenderTargetView(resource.as_raw_resource_ptr(), &resource.descriptor(), &mut handle) }
-            .to_result_with(|| RenderTargetView(handle))
+        let mut handle = null_mut();
+        unsafe
+        {
+            (*self.0).CreateRenderTargetView(resource.as_raw_resource_ptr(), &resource.descriptor(), &mut handle)
+                .to_result_with(|| RenderTargetView(handle))
+        }
     }
 }
 /// 深度ステンシルビュー(未完成)
-pub struct DepthStencilView(*mut ID3D11DepthStencilView);
+pub struct DepthStencilView(*mut ID3D11DepthStencilView); HandleWrapper!(for DepthStencilView[ID3D11DepthStencilView]);
 /// シェーダリソースビュー
-pub struct ShaderResourceView(*mut ID3D11ShaderResourceView);
-impl AsRawHandle<ID3D11ShaderResourceView> for ShaderResourceView { fn as_raw_handle(&self) -> *mut ID3D11ShaderResourceView { self.0 } }
+pub struct ShaderResourceView(*mut ID3D11ShaderResourceView); HandleWrapper!(for ShaderResourceView[ID3D11ShaderResourceView]);
 impl Device
 {
     /// シェーダリソースビューを作る
     pub fn new_shader_resource_view<R: Resource>(&self, resource: &R) -> IOResult<ShaderResourceView>
     {
-        let mut handle = std::ptr::null_mut();
-        unsafe { (*self.0).CreateShaderResourceView(resource.as_raw_resource_ptr(), std::ptr::null(), &mut handle) }.to_result_with(|| ShaderResourceView(handle))
+        let mut handle = null_mut();
+        unsafe
+        {
+            (*self.0).CreateShaderResourceView(resource.as_raw_resource_ptr(), null(), &mut handle)
+                .to_result_with(|| ShaderResourceView(handle))
+        }
     }
 }
 
@@ -436,10 +423,6 @@ impl<'c, 'r, R: Resource + 'r> MappedResource<'c, 'r, R>
     pub fn row_pitch(&self) -> usize { self.2.RowPitch as _ }
     pub fn depth_pitch(&self) -> usize { self.2.DepthPitch as _ }
 }
-
-AutoRemover!(for Device[ID3D11Device], ImmediateContext[ID3D11DeviceContext], DeferredContext[ID3D11DeviceContext]);
-AutoRemover!(for Texture2D[ID3D11Texture2D], Buffer[ID3D11Buffer], InputLayout[ID3D11InputLayout], SamplerState[ID3D11SamplerState]);
-AutoRemover!(for VertexShader[ID3D11VertexShader], PixelShader[ID3D11PixelShader], RenderTargetView[ID3D11RenderTargetView]);
 
 /// Iterator Support
 pub struct ReturnIterator<T>(Option<T>);

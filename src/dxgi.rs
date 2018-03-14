@@ -47,11 +47,11 @@ impl Factory
     }
 }
 /// Driver object for IDXGIAdapter
-pub struct Adapter(*mut IDXGIAdapter);
+pub struct Adapter(*mut IDXGIAdapter); HandleWrapper!(for Adapter[IDXGIAdapter] + FromRawHandle);
 /// Driver object for IDXGIDevice
-pub struct Device(*mut IDXGIDevice1);
+pub struct Device(*mut IDXGIDevice1); HandleWrapper!(for Device[IDXGIDevice1] + FromRawHandle);
 /// Driver object for IDXGISurface
-pub struct Surface(*mut IDXGISurface);
+pub struct Surface(*mut IDXGISurface); HandleWrapper!(for Surface[IDXGISurface] + FromRawHandle);
 
 pub trait DeviceChild { fn parent(&self) -> IOResult<Device>; }
 impl DeviceChild for Device { fn parent(&self) -> IOResult<Device> { Ok(self.clone()) } }
@@ -107,13 +107,23 @@ impl winapi::Interface for IDXGIDebug
         GUID { Data1: 0x119e7452, Data2: 0xde9e, Data3: 0x40fe, Data4: [0x88, 0x06, 0x88, 0xf9, 0x0c, 0x12, 0xb4, 0x41] }
     }
 }
+#[allow(non_snake_case)]
+impl IDXGIDebug
+{
+    pub unsafe fn QueryInterface(&mut self, riid: REFIID, ppvObject: *mut *mut c_void) -> HRESULT
+    {
+        ((*self.0).QueryInterface)(self, riid, ppvObject)
+    }
+    pub unsafe fn AddRef(&mut self) -> ULONG { ((*self.0).AddRef)(self) }
+    pub unsafe fn Release(&mut self) -> ULONG { ((*self.0).Release)(self) }
+}
 const DEBUG_ALL: GUID = GUID { Data1: 0xe48ae283, Data2: 0xda80, Data3: 0x490b, Data4: [0x87, 0xe6, 0x43, 0xe9, 0xa9, 0xcf, 0xda, 0x08] };
 const DEBUG_DX: GUID = GUID { Data1: 0x35cdd7fc, Data2: 0x13b2, Data3: 0x421d, Data4: [0xa5, 0xd7, 0x7e, 0x44, 0x51, 0x28, 0x7d, 0x64] };
 const DEBUG_DXGI: GUID = GUID { Data1: 0x25cddaa4, Data2: 0xb1c6, Data3: 0x47e1, Data4: [0xac, 0x3e, 0x98, 0x87, 0x5b, 0x5a, 0x2e, 0x2a] };
 const DEBUG_APP: GUID = GUID { Data1: 0x6cd6e01, Data2: 0x4219, Data3: 0x4ebd, Data4: [0x87, 0x09, 0x27, 0xed, 0x23, 0x36, 0x0c, 0x62] };
 pub enum DebugRegion { All, DirectX, DXGI, App }
 /// デバッグインターフェイス
-pub struct Debug(*mut IDXGIDebug);
+pub struct Debug(*mut IDXGIDebug); HandleWrapper!(for Debug[IDXGIDebug] + FromRawHandle);
 impl Debug
 {
     pub fn get() -> IOResult<Self>
@@ -136,19 +146,9 @@ impl Debug
         }, DXGI_DEBUG_RLO_ALL) }.checked()
     }
 }
-impl Drop for Debug
-{
-    fn drop(&mut self)
-    {
-        if let Some(p) = unsafe { self.0.as_mut() }
-        {
-            unsafe { ((*p.0).Release)(p) }; self.0 = std::ptr::null_mut();
-        }
-    }
-}
 
 /// スワップチェーン
-pub struct SwapChain(*mut IDXGISwapChain3, Format, usize);
+pub struct SwapChain(*mut IDXGISwapChain3, Format, usize); HandleWrapper!(for SwapChain[IDXGISwapChain3]);
 impl Factory
 {
     /// スワップチェーンの作成
@@ -216,75 +216,6 @@ impl SwapChain
     /// 表示
     pub fn present(&self) -> IOResult<()> { unsafe { (*self.0).Present(0, 0) }.checked() }
 }
-
-impl AsIUnknown for Factory { fn as_iunknown(&self) -> *mut IUnknown { self.0 as _ } }
-impl AsIUnknown for Adapter { fn as_iunknown(&self) -> *mut IUnknown { self.0 as _ } }
-impl AsIUnknown for Device { fn as_iunknown(&self) -> *mut IUnknown { self.0 as _ } }
-impl AsIUnknown for Surface { fn as_iunknown(&self) -> *mut IUnknown { self.0 as _ } }
-impl AsIUnknown for SwapChain { fn as_iunknown(&self) -> *mut IUnknown { self.0 as _ } }
-impl AsRawHandle<IDXGIFactory2> for Factory { fn as_raw_handle(&self) -> *mut IDXGIFactory2 { self.0 as _ } }
-impl AsRawHandle<IDXGIAdapter> for Adapter { fn as_raw_handle(&self) -> *mut IDXGIAdapter { self.0 as _ } }
-impl AsRawHandle<IDXGIDevice1> for Device { fn as_raw_handle(&self) -> *mut IDXGIDevice1 { self.0 as _ } }
-impl AsRawHandle<IDXGISurface> for Surface { fn as_raw_handle(&self) -> *mut IDXGISurface { self.0 as _ } }
-impl AsRawHandle<IDXGISwapChain3> for SwapChain { fn as_raw_handle(&self) -> *mut IDXGISwapChain3 { self.0 as _ } }
-impl FromRawHandle<IDXGIFactory2> for Factory { unsafe fn from_raw_handle(h: *mut IDXGIFactory2) -> Self { Factory(h) } }
-impl FromRawHandle<IDXGIAdapter> for Adapter { unsafe fn from_raw_handle(h: *mut IDXGIAdapter) -> Self { Adapter(h) } }
-impl FromRawHandle<IDXGIDevice1> for Device { unsafe fn from_raw_handle(h: *mut IDXGIDevice1) -> Self { Device(h) } }
-impl FromRawHandle<IDXGISurface> for Surface { unsafe fn from_raw_handle(h: *mut IDXGISurface) -> Self { Surface(h) } }
-impl Handle for Factory
-{
-    type RawType = IDXGIFactory2;
-    fn query_interface<Q: Handle>(&self) -> IOResult<Q> where Q: FromRawHandle<<Q as Handle>::RawType>
-    {
-        let mut handle: *mut Q::RawType = std::ptr::null_mut();
-        unsafe { (*self.0).QueryInterface(&Q::RawType::uuidof(), std::mem::transmute(&mut handle)) }.to_result_with(|| unsafe { Q::from_raw_handle(handle) })
-    }
-}
-impl Handle for Adapter
-{
-    type RawType = IDXGIAdapter;
-    fn query_interface<Q: Handle>(&self) -> IOResult<Q> where Q: FromRawHandle<<Q as Handle>::RawType>
-    {
-        let mut handle: *mut Q::RawType = std::ptr::null_mut();
-        unsafe { (*self.0).QueryInterface(&Q::RawType::uuidof(), std::mem::transmute(&mut handle)) }.to_result_with(|| unsafe { Q::from_raw_handle(handle) })
-    }
-}
-impl Handle for Device
-{
-    type RawType = IDXGIDevice1;
-    fn query_interface<Q: Handle>(&self) -> IOResult<Q> where Q: FromRawHandle<<Q as Handle>::RawType>
-    {
-        let mut handle: *mut Q::RawType = std::ptr::null_mut();
-        unsafe { (*self.0).QueryInterface(&Q::RawType::uuidof(), std::mem::transmute(&mut handle)) }.to_result_with(|| unsafe { Q::from_raw_handle(handle) })
-    }
-}
-impl Handle for Surface
-{
-    type RawType = IDXGISurface;
-    fn query_interface<Q: Handle>(&self) -> IOResult<Q> where Q: FromRawHandle<<Q as Handle>::RawType>
-    {
-        let mut handle: *mut Q::RawType = std::ptr::null_mut();
-        unsafe { (*self.0).QueryInterface(&Q::RawType::uuidof(), std::mem::transmute(&mut handle)) }.to_result_with(|| unsafe { Q::from_raw_handle(handle) })
-    }
-}
-impl Handle for SwapChain
-{
-    type RawType = IDXGISwapChain3;
-    fn query_interface<Q: Handle>(&self) -> IOResult<Q> where Q: FromRawHandle<<Q as Handle>::RawType>
-    {
-        let mut handle: *mut Q::RawType = std::ptr::null_mut();
-        unsafe { (*self.0).QueryInterface(&Q::RawType::uuidof(), std::mem::transmute(&mut handle)) }.to_result_with(|| unsafe { Q::from_raw_handle(handle) })
-    }
-}
-impl Clone for Device
-{
-    fn clone(&self) -> Self { unsafe { (*self.0).AddRef() }; Device(self.0) }
-}
-impl Clone for Surface
-{
-    fn clone(&self) -> Self { unsafe { (*self.0).AddRef() }; Surface(self.0) }
-}
-AutoRemover!(for Factory[IDXGIFactory2], Adapter[IDXGIAdapter], Device[IDXGIDevice], Surface[IDXGISurface], SwapChain[IDXGISwapChain3]);
 
 #[link(name = "dxgi")]
 extern "system"

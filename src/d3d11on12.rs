@@ -8,27 +8,13 @@ use super::*;
 use metrics::transmute_safe;
 
 /// Driver object for ID3D11On12Device
-pub struct Device(*mut ID3D11On12Device);
-impl Handle for Device
-{
-    type RawType = ID3D11On12Device;
-    fn query_interface<Q: Handle>(&self) -> IOResult<Q> where Q: FromRawHandle<<Q as Handle>::RawType>
-    {
-        let mut handle: *mut Q::RawType = std::ptr::null_mut();
-        unsafe { (*self.0).QueryInterface(&Q::RawType::uuidof(), std::mem::transmute(&mut handle)) }.to_result_with(|| unsafe { Q::from_raw_handle(handle) })
-    }
-}
-impl AsRawHandle<ID3D11On12Device> for Device { fn as_raw_handle(&self) -> *mut ID3D11On12Device { self.0 } }
-impl FromRawHandle<ID3D11On12Device> for Device { unsafe fn from_raw_handle(h: *mut ID3D11On12Device) -> Self { Device(h) } }
-impl AsIUnknown for Device { fn as_iunknown(&self) -> *mut IUnknown { self.0 as _ } }
-impl dxgi::DeviceChild for Device
-{
-    fn parent(&self) -> IOResult<dxgi::Device> { self.query_interface() }
-}
+pub struct Device(*mut ID3D11On12Device); HandleWrapper!(for Device[ID3D11On12Device] + FromRawHandle);
+impl dxgi::DeviceChild for Device { fn parent(&self) -> IOResult<dxgi::Device> { self.query_interface() } }
 
 impl Device
 {
-    pub fn new(device12: &d3d12::Device, queues: &[&d3d12::CommandQueue], bgra_support: bool, debug: bool) -> IOResult<(Self, d3d11::ImmediateContext)>
+    pub fn new(device12: &d3d12::Device, queues: &[&d3d12::CommandQueue], bgra_support: bool, debug: bool)
+        -> IOResult<(Self, d3d11::ImmediateContext)>
     {
         let (mut d11, mut dc) = (std::ptr::null_mut(), std::ptr::null_mut());
         let flags = if bgra_support { D3D11_CREATE_DEVICE_BGRA_SUPPORT } else { 0 } | if debug { D3D11_CREATE_DEVICE_DEBUG } else { 0 };
@@ -71,8 +57,6 @@ impl<T: d3d11::Resource> dxgi::SurfaceChild for WrappedResource<T> where T: dxgi
 {
     fn base(&self) -> IOResult<dxgi::Surface> { self.0.base() }
 }
-
-AutoRemover!(for Device[ID3D11On12Device]);
 
 #[link(name = "d3d11")]
 extern "system"
