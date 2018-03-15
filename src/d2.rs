@@ -173,7 +173,7 @@ pub trait RenderTarget
     fn draw_raw_text<S: UnivString + ?Sized, B: Brush + ?Sized, R>(&self, r: &R, text: &S, format: &dwrite::TextFormat, brush: &B) -> &Self
         where R: Borrow<D2D1_RECT_F> + ?Sized
     {
-        let tw = text.to_wcstr();
+        let tw = text.to_wcstr().unwrap();
         unsafe
         {
             (*self.as_rt_handle()).DrawText(tw.as_ptr(), tw.len() as _, format.as_raw_handle(), r.borrow(), brush.as_raw_brush(), D2D1_DRAW_TEXT_OPTIONS_NONE, DWRITE_MEASURING_MODE_NATURAL)

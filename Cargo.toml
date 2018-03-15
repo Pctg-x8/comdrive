@@ -9,6 +9,7 @@ trace_releasing = []
 
 [dependencies]
 widestring = "0.2"
+univstring = "0.2"
 metrics = { git = "https://github.com/Pctg-x8/metrics" }
 
 [dependencies.winapi]

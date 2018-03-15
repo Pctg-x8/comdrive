@@ -30,10 +30,11 @@ pub struct BitmapDecoder(*mut IWICBitmapDecoder); HandleWrapper!(for BitmapDecod
 impl Factory
 {
     /// Create Bitmap Decoder from File
-    pub fn new_decoder_from_file<WPath: ::UnivString + ?Sized>(&self, path: &WPath) -> IOResult<BitmapDecoder>
+    pub fn new_decoder_from_file<WPath: UnivString + ?Sized>(&self, path: &WPath) -> IOResult<BitmapDecoder>
     {
         let mut handle = std::ptr::null_mut();
-        unsafe { (*self.0).CreateDecoderFromFilename(path.to_wcstr().as_ptr(), std::ptr::null(), GENERIC_READ,
+        let p = path.to_wcstr().unwrap();
+        unsafe { (*self.0).CreateDecoderFromFilename(p.as_ptr(), std::ptr::null(), GENERIC_READ,
             WICDecodeMetadataCacheOnDemand, &mut handle).to_result_with(|| BitmapDecoder(handle)) }
     }
 }

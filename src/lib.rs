@@ -1,16 +1,15 @@
 //! COM Driver
 
 extern crate metrics;
-extern crate widestring;
+extern crate widestring; extern crate univstring;
 extern crate winapi;
 
-use widestring::*;
+use univstring::*;
 use std::io::{Result as IOResult, Error as IOError};
 use winapi::shared::windef::HWND;
 use winapi::shared::winerror::{HRESULT, SUCCEEDED};
 use winapi::um::unknwnbase::IUnknown;
 use winapi::Interface;
-use std::borrow::Cow;
 
 pub trait ResultCarrier
 {
@@ -30,38 +29,6 @@ impl ResultCarrier for HRESULT
     }
     fn checked(self) -> IOResult<()> { if SUCCEEDED(self) { Ok(()) } else { Err(IOError::from_raw_os_error(self)) } }
 }
-
-use std::ffi::{CStr, CString};
-use std::ops::Deref;
-/// Universal String Trait(convertable to wide string)
-pub trait UnivString
-{
-    /// UTF-16 string
-    fn to_wcstr(&self) -> Cow<WideCStr>;
-}
-impl UnivString for str
-{
-    fn to_wcstr(&self) -> Cow<WideCStr> { WideCString::from_str(self).unwrap().into() }
-}
-impl UnivString for String
-{
-    fn to_wcstr(&self) -> Cow<WideCStr> { WideCString::from_str(self).unwrap().into() }
-}
-impl UnivString for WideStr
-{
-    fn to_wcstr(&self) -> Cow<WideCStr> { WideCString::from_wide_str(self).unwrap().into() }
-}
-impl UnivString for WideString
-{
-    fn to_wcstr(&self) -> Cow<WideCStr> { WideCString::from_wide_str(self).unwrap().into() }
-}
-impl UnivString for CStr
-{
-    fn to_wcstr(&self) -> Cow<WideCStr> { WideCString::from_str(self.to_string_lossy().deref()).unwrap().into() }
-}
-impl UnivString for CString { fn to_wcstr(&self) -> Cow<WideCStr> { self.as_c_str().to_wcstr() } }
-impl UnivString for WideCStr { fn to_wcstr(&self) -> Cow<WideCStr> { self.into() } }
-impl UnivString for WideCString { fn to_wcstr(&self) -> Cow<WideCStr> { self.as_wide_c_str().into() } }
 
 /// IUnknownにへんかんできることを保証(AsRawHandle<IUnknown>の特殊化)
 pub trait AsIUnknown { fn as_iunknown(&self) -> *mut IUnknown; }

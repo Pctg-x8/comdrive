@@ -7,6 +7,7 @@ use super::*;
 use metrics::*;
 use winapi::ctypes::c_void;
 pub use winapi::um::dwrite::DWRITE_GLYPH_OFFSET as GlyphOffset;
+use std::ops::Deref;
 
 pub use winapi::um::dwrite::DWRITE_TEXT_METRICS as TextMetrics;
 #[repr(C)] #[derive(Debug, Clone, PartialEq, Eq, Copy)]
@@ -14,6 +15,29 @@ pub enum FontStyle
 {
     None = DWRITE_FONT_STYLE_NORMAL as _, Oblique = DWRITE_FONT_STYLE_OBLIQUE as _, Italic = DWRITE_FONT_STYLE_ITALIC as _
 }
+pub use winapi::um::dwrite::{
+    DWRITE_FONT_WEIGHT as FontWeight,
+    DWRITE_FONT_WEIGHT_THIN as FONT_WEIGHT_THIN, DWRITE_FONT_WEIGHT_EXTRA_LIGHT as FONT_WEIGHT_EXTRA_LIGHT,
+    DWRITE_FONT_WEIGHT_ULTRA_LIGHT as FONT_WEIGHT_ULTRA_LIGHT, DWRITE_FONT_WEIGHT_LIGHT as FONT_WEIGHT_LIGHT,
+    DWRITE_FONT_WEIGHT_NORMAL as FONT_WEIGHT_NORMAL, DWRITE_FONT_WEIGHT_REGULAR as FONT_WEIGHT_REGULAR,
+    DWRITE_FONT_WEIGHT_MEDIUM as FONT_WEIGHT_MEDIUM, DWRITE_FONT_WEIGHT_DEMI_BOLD as FONT_WEIGHT_DEMI_BOLD,
+    DWRITE_FONT_WEIGHT_SEMI_BOLD as FONT_WEIGHT_SEMI_BOLD, DWRITE_FONT_WEIGHT_BOLD as FONT_WEIGHT_BOLD,
+    DWRITE_FONT_WEIGHT_EXTRA_BOLD as FONT_WEIGHT_EXTRA_BOLD, DWRITE_FONT_WEIGHT_ULTRA_BOLD as FONT_WEIGHT_ULTRA_BOLD,
+    DWRITE_FONT_WEIGHT_BLACK as FONT_WEIGHT_BLACK, DWRITE_FONT_WEIGHT_HEAVY as FONT_WEIGHT_HEAVY,
+    DWRITE_FONT_WEIGHT_EXTRA_BLACK as FONT_WEIGHT_EXTRA_BLACK, DWRITE_FONT_WEIGHT_ULTRA_BLACK as FONT_WEIGHT_ULTRA_BLACK
+};
+pub use winapi::um::dwrite::{
+    DWRITE_FONT_STRETCH as FontStretch,
+    DWRITE_FONT_STRETCH_ULTRA_CONDENSED as FONT_STRETCH_ULTRA_CONDENSED,
+    DWRITE_FONT_STRETCH_EXTRA_CONDENSED as FONT_STRETCH_EXTRA_CONDENSED,
+    DWRITE_FONT_STRETCH_CONDENSED as FONT_STRETCH_CONDENSED,
+    DWRITE_FONT_STRETCH_SEMI_CONDENSED as FONT_STRECH_SEMI_CONDENSED,
+    DWRITE_FONT_STRETCH_NORMAL as FONT_STRETCH_NORMAL, DWRITE_FONT_STRETCH_MEDIUM as FONT_STRETCH_MEDIUM,
+    DWRITE_FONT_STRETCH_SEMI_EXPANDED as FONT_STRETCH_SEMI_EXPANDED,
+    DWRITE_FONT_STRETCH_EXPANDED as FONT_STRETCH_EXPANDED,
+    DWRITE_FONT_STRETCH_EXTRA_EXPANDED as FONT_STRETCH_EXTRA_EXPANDED,
+    DWRITE_FONT_STRETCH_ULTRA_EXPANDED as FONT_STRETCH_ULTRA_EXPANDED
+};
 
 /// Driver class for IDWriteFactory
 pub struct Factory(*mut IDWriteFactory); HandleWrapper!(for Factory[IDWriteFactory]);
@@ -46,13 +70,14 @@ impl FromRawHandle<IDWriteTextFormat> for TextFormat { unsafe fn from_raw_handle
 impl Factory
 {
     /// Create Text Format
-    pub fn new_text_format<Name: ::UnivString + ?Sized>(&self, family_name: &Name, collection: Option<&FontCollection>, size: f32, options: FontOptions) -> IOResult<TextFormat>
+    pub fn new_text_format<Name: UnivString + ?Sized>(&self, family_name: &Name, collection: Option<&FontCollection>, size: f32, options: FontOptions) -> IOResult<TextFormat>
     {
-        let ws_ja_jp = WideCString::from_str("ja-JP").unwrap();
+        let ws_ja_jp = "ja-JP".to_wcstr().unwrap();
+        let fam = family_name.to_wcstr().unwrap();
         let mut handle = std::ptr::null_mut();
         unsafe
         {
-            (*self.0).CreateTextFormat(family_name.to_wcstr().as_ptr(), collection.as_ref().map(|x| x.0).unwrap_or(std::ptr::null_mut()),
+            (*self.0).CreateTextFormat(fam.as_ptr(), collection.as_ref().map(|x| x.0).unwrap_or(std::ptr::null_mut()),
                 options.weight, options.style as _, options.stretch, size, ws_ja_jp.as_ptr(), &mut handle).to_result_with(|| TextFormat(handle))
         }
     }
@@ -64,11 +89,11 @@ impl FromRawHandle<IDWriteTextLayout1> for TextLayout { unsafe fn from_raw_handl
 impl Factory
 {
     /// Create Text Layout
-    pub fn new_text_layout<Content: ::UnivString + ?Sized>(&self, content: &Content, format: &TextFormat, max_width: f32, max_height: f32)
+    pub fn new_text_layout<Content: UnivString + ?Sized>(&self, content: &Content, format: &TextFormat, max_width: f32, max_height: f32)
         -> IOResult<TextLayout>
     {
         let mut handle = std::ptr::null_mut();
-        let content_w = content.to_wcstr();
+        let content_w = content.to_wcstr().unwrap();
         unsafe { (*self.0).CreateTextLayout(content_w.as_ptr(), content_w.len() as _, format.0, max_width, max_height, &mut handle) }
             .to_result(handle).and_then(|h| unsafe
             {
@@ -111,10 +136,10 @@ impl TextLayout
 pub struct FontFamily(*mut IDWriteFontFamily); HandleWrapper!(for FontFamily[IDWriteFontFamily]);
 impl FontCollection
 {
-    pub fn find_family_name<S: ::UnivString + ?Sized>(&self, name: &S) -> IOResult<Option<u32>>
+    pub fn find_family_name<S: UnivString + ?Sized>(&self, name: &S) -> IOResult<Option<u32>>
     {
         let (mut index, mut exists) = (0, 0);
-        let n = name.to_wcstr();
+        let n = name.to_wcstr().unwrap();
         unsafe
         {
             (*self.0).FindFamilyName(n.as_ptr(), &mut index, &mut exists)
@@ -125,6 +150,14 @@ impl FontCollection
     {
         let mut handle = std::ptr::null_mut();
         unsafe { (*self.0).GetFontFamily(index, &mut handle).to_result_with(|| FontFamily(handle)) }
+    }
+}
+impl FontFamily
+{
+    pub fn first_matching_font(&self, weight: FontWeight, stretch: FontStretch, style: FontStyle) -> IOResult<Font>
+    {
+        let mut handle = std::ptr::null_mut();
+        unsafe { (*self.0).GetFirstMatchingFont(weight, stretch, style as _, &mut handle).to_result_with(|| Font(handle)) }
     }
 }
 impl Deref for FontFamily
@@ -216,9 +249,10 @@ impl Factory
 pub struct FontFile(*mut IDWriteFontFile); HandleWrapper!(for FontFile[IDWriteFontFile]);
 impl Factory
 {
-    pub fn new_font_file_reference<WPath: ::UnivString + ?Sized>(&self, path: &WPath) -> IOResult<FontFile>
+    pub fn new_font_file_reference<WPath: UnivString + ?Sized>(&self, path: &WPath) -> IOResult<FontFile>
     {
         let mut handle = std::ptr::null_mut();
-        unsafe { (*self.0).CreateFontFileReference(path.to_wcstr().as_ptr(), std::ptr::null(), &mut handle).to_result_with(|| FontFile(handle)) }
+        let p = path.to_wcstr().unwrap();
+        unsafe { (*self.0).CreateFontFileReference(p.as_ptr(), std::ptr::null(), &mut handle).to_result_with(|| FontFile(handle)) }
     }
 }
