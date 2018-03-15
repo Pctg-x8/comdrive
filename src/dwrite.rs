@@ -9,6 +9,7 @@ use winapi::ctypes::c_void;
 pub use winapi::um::dwrite::DWRITE_GLYPH_OFFSET as GlyphOffset;
 use std::ops::Deref;
 use std::mem::uninitialized;
+use std::ptr::{null_mut, null};
 
 pub use winapi::um::dwrite::{DWRITE_TEXT_METRICS as TextMetrics, DWRITE_FONT_METRICS as FontMetrics};
 #[repr(C)] #[derive(Debug, Clone, PartialEq, Eq, Copy)]
@@ -221,10 +222,18 @@ impl FontFace
         unsafe
         {
             (*self.0).GetGlyphRunOutline(emsize, indices.as_ptr(),
-                advances.map(|x| x.as_ptr()).unwrap_or(std::ptr::null()),
-                offsets.map(|x| x.as_ptr()).unwrap_or(std::ptr::null()),
+                advances.map(|x| x.as_ptr()).unwrap_or(null()),
+                offsets.map(|x| x.as_ptr()).unwrap_or(null()),
                 indices.len() as _, sideways as _, rtl as _, sink.as_raw_handle()).checked()
         }
+    }
+    /// フォントファイルの列挙
+    pub fn files(&self) -> IOResult<Vec<FontFile>>
+    {
+        let mut num = 0;
+        unsafe { (*self.0).GetFiles(&mut num, null_mut()).checked()?; }
+        let mut vf = Vec::with_capacity(num as _); unsafe { vf.set_len(num as _); }
+        unsafe { (*self.0).GetFiles(&mut num, null_mut()).to_result(vf) }
     }
 }
 
