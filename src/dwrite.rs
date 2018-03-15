@@ -233,7 +233,7 @@ impl FontFace
         let mut num = 0;
         unsafe { (*self.0).GetFiles(&mut num, null_mut()).checked()?; }
         let mut vf = Vec::with_capacity(num as _); unsafe { vf.set_len(num as _); }
-        unsafe { (*self.0).GetFiles(&mut num, null_mut()).to_result(vf) }
+        unsafe { (*self.0).GetFiles(&mut num, vf.as_mut_ptr() as *mut _).to_result(vf) }
     }
 }
 
