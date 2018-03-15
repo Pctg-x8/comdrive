@@ -130,12 +130,15 @@ impl Debug
     {
         let lib = unsafe { LoadLibraryA("dxgidebug.dll\x00".as_ptr() as *const _) };
         if lib.is_null() { return Err(IOError::last_os_error()); };
-        let dxgi_get_debug_interface = unsafe
+        let dxgi_get_debug_interface: unsafe extern "system" fn(REFIID, *mut *mut c_void) -> HRESULT = unsafe
         {
-            std::mem::transmute::<_, unsafe extern "system" fn(REFIID, *mut *mut c_void) -> HRESULT>(GetProcAddress(lib, "DXGIGetDebugInterface\x00".as_ptr() as *const _))
+            std::mem::transmute(GetProcAddress(lib, "DXGIGetDebugInterface\x00".as_ptr() as *const _))
         };
         let mut handle = std::ptr::null_mut();
-        let handle = unsafe { (dxgi_get_debug_interface)(&IDXGIDebug::uuidof(), &mut handle) }.to_result_with(|| Debug(handle as _))?;
+        let handle = unsafe
+        {
+            (dxgi_get_debug_interface)(&IDXGIDebug::uuidof(), &mut handle).to_result_with(|| Debug(handle as _))?
+        };
         unsafe { FreeLibrary(lib) }; Ok(handle)
     }
     pub fn report_live_objects(&self, region: DebugRegion) -> IOResult<()>
