@@ -10,6 +10,7 @@ pub use winapi::um::dwrite::DWRITE_GLYPH_OFFSET as GlyphOffset;
 use std::ops::Deref;
 use std::mem::uninitialized;
 use std::ptr::{null_mut, null};
+use std::slice;
 
 pub use winapi::um::dwrite::{DWRITE_TEXT_METRICS as TextMetrics, DWRITE_FONT_METRICS as FontMetrics};
 #[repr(C)] #[derive(Debug, Clone, PartialEq, Eq, Copy)]
@@ -274,4 +275,74 @@ impl Factory
         let p = path.to_wcstr().unwrap();
         unsafe { (*self.0).CreateFontFileReference(p.as_ptr(), std::ptr::null(), &mut handle).to_result_with(|| FontFile(handle)) }
     }
+}
+impl FontFile
+{
+    /// ローダにおけるこのファイルへの参照キー
+    pub fn reference_key(&self) -> IOResult<&[u8]>
+    {
+        let (mut ptr, mut size) = (null(), 0);
+        unsafe
+        {
+            (*self.0).GetReferenceKey(&mut ptr as *mut _ as *mut *const _, &mut size)
+                .to_result_with(|| slice::from_raw_parts(ptr, size as _))
+        }
+    }
+}
+
+/// フォントファイルローダ
+pub struct FontFileLoader(*mut IDWriteFontFileLoader); HandleWrapper!(for FontFileLoader[IDWriteFontFileLoader]);
+impl FontFile
+{
+    /// 関連付けられたファイルローダ
+    pub fn loader(&self) -> IOResult<FontFileLoader>
+    {
+        let mut handle = null_mut();
+        unsafe { (*self.0).GetLoader(&mut handle).to_result_with(|| FontFileLoader(handle)) }
+    }
+}
+
+/// フォントファイルストリーム
+pub struct FontFileStream(*mut IDWriteFontFileStream); HandleWrapper!(for FontFileStream[IDWriteFontFileStream]);
+impl FontFileLoader
+{
+    pub fn new_stream_from_key(&self, refkey: &[u8]) -> IOResult<FontFileStream>
+    {
+        let mut handle = null_mut();
+        unsafe
+        {
+            (*self.0).CreateStreamFromKey(refkey.as_ptr() as *const _, refkey.len() as _, &mut handle)
+                .to_result_with(|| FontFileStream(handle))
+        }
+    }
+}
+impl FontFileStream
+{
+    pub fn file_size(&self) -> IOResult<usize>
+    {
+        let mut size = 0;
+        unsafe { (*self.0).GetFileSize(&mut size).to_result(size as _) }
+    }
+}
+
+/// フォントファイルの断片
+pub struct FontFileFragment<'a> { pub data_ptr: &'a [u8], release: *mut c_void, owner: &'a FontFileStream }
+impl FontFileStream
+{
+    pub fn read_fragment(&self, offset: usize, size: usize) -> IOResult<FontFileFragment>
+    {
+        let (mut dptr, mut ctx) = (null(), null_mut());
+        unsafe
+        {
+            (*self.0).ReadFileFragment(&mut dptr as *mut _ as *mut *const _, offset as _, size as _, &mut ctx)
+                .to_result_with(|| FontFileFragment
+                {
+                    data_ptr: slice::from_raw_parts(dptr, size), release: ctx, owner: self
+                })
+        }
+    }
+}
+impl<'a> Drop for FontFileFragment<'a>
+{
+    fn drop(&mut self) { unsafe { (*self.owner.0).ReleaseFileFragment(self.release); } }
 }
