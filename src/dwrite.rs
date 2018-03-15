@@ -8,8 +8,9 @@ use metrics::*;
 use winapi::ctypes::c_void;
 pub use winapi::um::dwrite::DWRITE_GLYPH_OFFSET as GlyphOffset;
 use std::ops::Deref;
+use std::mem::uninitialized;
 
-pub use winapi::um::dwrite::DWRITE_TEXT_METRICS as TextMetrics;
+pub use winapi::um::dwrite::{DWRITE_TEXT_METRICS as TextMetrics, DWRITE_FONT_METRICS as FontMetrics};
 #[repr(C)] #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub enum FontStyle
 {
@@ -113,7 +114,7 @@ impl TextLayout
     {
         unsafe
         {
-            let mut metr = std::mem::uninitialized();
+            let mut metr = uninitialized();
             (*self.0).GetMetrics(&mut metr).to_result(metr)
         }
     }
@@ -176,6 +177,15 @@ impl FontList
     {
         let mut handle = std::ptr::null_mut();
         unsafe { (*self.0).GetFont(index, &mut handle).to_result_with(|| Font(handle)) }
+    }
+}
+impl Font
+{
+    pub fn metrics(&self) -> IOResult<FontMetrics>
+    {
+        let mut metr = unsafe { uninitialized() };
+        unsafe { (*self.0).GetMetrics(&mut metr) };
+        return Ok(metr);
     }
 }
 
