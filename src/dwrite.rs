@@ -8,7 +8,7 @@ use metrics::*;
 use winapi::ctypes::c_void;
 pub use winapi::um::dwrite::DWRITE_GLYPH_OFFSET as GlyphOffset;
 use std::ops::Deref;
-use std::mem::uninitialized;
+use std::mem::{uninitialized, size_of};
 use std::ptr::{null_mut, null};
 use std::slice;
 
@@ -244,8 +244,12 @@ impl Factory
 {
     pub fn system_font_collection(&self, check_for_updates: bool) -> IOResult<FontCollection>
     {
-        let mut handle = std::ptr::null_mut();
-        unsafe { (*self.0).GetSystemFontCollection(&mut handle, check_for_updates as _).to_result_with(|| FontCollection(handle)) }
+        let mut handle = null_mut();
+        unsafe
+        {
+            (*self.0).GetSystemFontCollection(&mut handle, check_for_updates as _)
+                .to_result_with(|| FontCollection(handle))
+        }
     }
     /// フォントコレクションローダ(各自で実装)を登録
     pub fn register_font_collection_loader(&self, loader: *mut IDWriteFontCollectionLoader) -> IOResult<()>
@@ -255,8 +259,12 @@ impl Factory
     /// カスタムフォントコレクションを作成
     pub fn new_custom_font_collection<KeyT>(&self, loader: *mut IDWriteFontCollectionLoader, key: KeyT) -> IOResult<FontCollection>
     {
-        let mut handle = std::ptr::null_mut();
-        unsafe { (*self.0).CreateCustomFontCollection(loader, &key as *const KeyT as *const c_void, std::mem::size_of::<KeyT>() as _, &mut handle).to_result_with(|| FontCollection(handle)) }
+        let mut handle = null_mut();
+        unsafe
+        {
+            (*self.0).CreateCustomFontCollection(loader, &key as *const _ as *const c_void, size_of::<KeyT>() as _, &mut handle)
+                .to_result_with(|| FontCollection(handle))
+        }
     }
     /// フォントコレクションローダの削除
     pub fn unregister_font_collection_loader(&self, loader: *mut IDWriteFontCollectionLoader) -> IOResult<()>
@@ -271,9 +279,13 @@ impl Factory
 {
     pub fn new_font_file_reference<WPath: UnivString + ?Sized>(&self, path: &WPath) -> IOResult<FontFile>
     {
-        let mut handle = std::ptr::null_mut();
+        let mut handle = null_mut();
         let p = path.to_wcstr().unwrap();
-        unsafe { (*self.0).CreateFontFileReference(p.as_ptr(), std::ptr::null(), &mut handle).to_result_with(|| FontFile(handle)) }
+        unsafe
+        {
+            (*self.0).CreateFontFileReference(p.as_ptr(), std::ptr::null(), &mut handle)
+                .to_result_with(|| FontFile(handle))
+        }
     }
 }
 impl FontFile
