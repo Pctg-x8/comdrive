@@ -126,13 +126,18 @@ impl TextLayout
         self.metrics().map(|m| Size2F(m.width, m.height))
     }
     /// set character spacing
-    pub fn set_character_spacing(&self, space_pre: f32, space_post: f32) -> IOResult<()>
+    pub fn set_character_spacing(&self, space_pre: f32, space_post: f32, min_advance: f32) -> IOResult<()>
     {
         unsafe
         {
-            (*self.0).SetCharacterSpacing(space_pre, space_post, space_pre,
+            (*self.0).SetCharacterSpacing(space_pre, space_post, min_advance,
                 DWRITE_TEXT_RANGE { startPosition: 0, length: std::u32::MAX }).checked()
         }
+    }
+    /// Drawing the layout by calling back to the renderer object.
+    pub unsafe fn draw(&self, callback: *mut IDWriteTextRenderer, context: *mut c_void, origin: &Point2F) -> IOResult<()>
+    {
+        (*self.0).Draw(context, callback, origin.x(), origin.y()).checked()
     }
 }
 

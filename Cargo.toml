@@ -2,15 +2,16 @@
 name = "comdrive"
 version = "0.3.0"
 authors = ["S.Percentage"]
-description = "COM Object Driver and Definitions for Rust"
+description = "COM Object Driver for Rust"
 
 [features]
-trace_releasing = []
+trace_releasing = ["log"]
 
 [dependencies]
 widestring = "0.2"
 univstring = "0.2"
 metrics = { git = "https://github.com/Pctg-x8/metrics" }
+log = { version = "0.4", optional = true }
 
 [dependencies.winapi]
 version = "0.3"
