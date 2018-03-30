@@ -126,7 +126,7 @@ impl TextLayout
         unsafe
         {
             let mut count = 0;
-            (*self.0).GetLineMetrics(null_mut(), 0, &mut count).checked()?;
+            (*self.0).GetLineMetrics(null_mut(), 0, &mut count);
             let mut metrics = Vec::with_capacity(count as _); metrics.set_len(count as _);
             (*self.0).GetLineMetrics(metrics.as_mut_ptr(), count, &mut count).to_result(metrics)
         }
