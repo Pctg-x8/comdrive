@@ -12,7 +12,7 @@ use std::mem::{uninitialized, size_of};
 use std::ptr::{null_mut, null};
 use std::slice;
 
-pub use winapi::um::dwrite::{DWRITE_TEXT_METRICS as TextMetrics, DWRITE_FONT_METRICS as FontMetrics};
+pub use winapi::um::dwrite::{DWRITE_TEXT_METRICS as TextMetrics, DWRITE_FONT_METRICS as FontMetrics, DWRITE_LINE_METRICS as LineMetrics};
 #[repr(C)] #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub enum FontStyle
 {
@@ -118,6 +118,17 @@ impl TextLayout
         {
             let mut metr = uninitialized();
             (*self.0).GetMetrics(&mut metr).to_result(metr)
+        }
+    }
+    /// Metrics of each lines
+    pub fn line_metrics(&self) -> IOResult<Vec<LineMetrics>>
+    {
+        unsafe
+        {
+            let mut count = 0;
+            (*self.0).GetLineMetrics(null_mut(), 0, &mut count).checked()?;
+            let mut metrics = Vec::with_capacity(count as _); metrics.set_len(count as _);
+            (*self.0).GetLineMetrics(metrics.as_mut_ptr(), count, &mut count).to_result(metrics)
         }
     }
     /// Size Metrics of this layout
