@@ -12,7 +12,10 @@ use std::mem::{uninitialized, size_of};
 use std::ptr::{null_mut, null};
 use std::slice;
 
-pub use winapi::um::dwrite::{DWRITE_TEXT_METRICS as TextMetrics, DWRITE_FONT_METRICS as FontMetrics, DWRITE_LINE_METRICS as LineMetrics};
+pub use winapi::um::dwrite::{
+    DWRITE_TEXT_METRICS as TextMetrics, DWRITE_FONT_METRICS as FontMetrics, DWRITE_LINE_METRICS as LineMetrics,
+    DWRITE_OVERHANG_METRICS as OverhangMetrics
+};
 #[repr(C)] #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub enum FontStyle
 {
@@ -118,6 +121,15 @@ impl TextLayout
         {
             let mut metr = uninitialized();
             (*self.0).GetMetrics(&mut metr).to_result(metr)
+        }
+    }
+    /// Overhanging Metrics of the Layout
+    pub fn overhang_metrics(&self) -> IOResult<OverhangMetrics>
+    {
+        unsafe
+        {
+            let mut metr = uninitialized();
+            (*self.0).GetOverhangMetrics(&mut metr).to_result(metr)
         }
     }
     /// Metrics of each lines
