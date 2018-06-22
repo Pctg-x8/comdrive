@@ -444,6 +444,7 @@ impl GeometrySegment for D2D1_BEZIER_SEGMENT
     fn add_to(&self, sink: &GeometrySink) { unsafe { (*sink.0).AddBezier(self); } }
     fn add_multi(v: &[Self], sink: &GeometrySink) { unsafe { (*sink.0).AddBeziers(v.as_ptr(), v.len() as _); } }
 }
+use winapi::um::d2d1::D2D1_POINT_2F;
 /// Line
 impl GeometrySegment for D2D1_POINT_2F
 {
