@@ -101,7 +101,7 @@ impl Device
     }
 }
 
-use winapi::um::d2d1::D2D1_SIZE_F;
+use winapi::um::d2d1::{D2D1_SIZE_F, D2D1_RECT_F, D2D1_SIZE_U};
 
 /// RenderTarget系の共通実装
 pub trait RenderTarget
