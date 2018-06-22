@@ -524,4 +524,5 @@ impl Matrix3x2F
         Matrix3x2F(D2D1_MATRIX_3X2_F { matrix: [[1.0, 0.0], [0.0, 1.0], [x, y]] })
     }
 }
+use winapi::um::d2d1::D2D1_MATRIX_3X2_F;
 impl Borrow<D2D1_MATRIX_3X2_F> for Matrix3x2F { fn borrow(&self) -> &D2D1_MATRIX_3X2_F { &self.0 } }
