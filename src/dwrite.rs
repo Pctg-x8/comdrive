@@ -274,6 +274,19 @@ impl FontFace
         let mut vf = Vec::with_capacity(num as _); unsafe { vf.set_len(num as _); }
         unsafe { (*self.0).GetFiles(&mut num, vf.as_mut_ptr() as *mut _).to_result(vf) }
     }
+
+    /// グリフ単位のメトリックを取得
+    pub fn design_glyph_metrics(&self, glyphs: &[u16], is_sideways: bool) -> IOResult<Vec<DWRITE_GLYPH_METRICS>>
+    {
+        let mut sink = Vec::with_capacity(glyphs.len());
+        unsafe { sink.set_len(glyphs.len()); }
+
+        unsafe
+        {
+            (*self.0).GetDesignGlyphMetrics(glyphs.as_ptr() as _, glyphs.len() as _, sink.as_mut_ptr(),
+                is_sideways as _).to_result(sink)
+        }
+    }
 }
 
 /// フォントコレクション
