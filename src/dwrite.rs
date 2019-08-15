@@ -8,7 +8,7 @@ use metrics::*;
 use winapi::ctypes::c_void;
 pub use winapi::um::dwrite::DWRITE_GLYPH_OFFSET as GlyphOffset;
 use std::ops::Deref;
-use std::mem::{uninitialized, size_of};
+use std::mem::{uninitialized, size_of, MaybeUninit};
 use std::ptr::{null_mut, null};
 use std::slice;
 
@@ -232,6 +232,15 @@ impl Font
 }
 impl FontFace
 {
+    pub fn metrics(&self) -> FontMetrics
+    {
+        let mut metr = std::mem::MaybeUninit::uninit();
+        unsafe
+        {
+            (*self.0).GetMetrics(metr.as_mut_ptr());
+            metr.assume_init()
+        }
+    }
     pub fn glyph_indices(&self, codepoints: &[char]) -> IOResult<Vec<u16>>
     {
         let mut indices = Vec::with_capacity(codepoints.len()); unsafe { indices.set_len(codepoints.len()); }
