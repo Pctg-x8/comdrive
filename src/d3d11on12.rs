@@ -8,6 +8,7 @@ use super::*;
 use metrics::transmute_safe;
 
 /// Driver object for ID3D11On12Device
+#[repr(transparent)]
 pub struct Device(*mut ID3D11On12Device); HandleWrapper!(for Device[ID3D11On12Device] + FromRawHandle);
 impl dxgi::DeviceChild for Device { fn parent(&self) -> IOResult<dxgi::Device> { self.query_interface() } }
 
@@ -28,6 +29,7 @@ impl Device
 }
 
 /// Driver object for Wrapped Resource
+#[repr(transparent)]
 pub struct WrappedResource<T: d3d11::Resource>(T);
 impl<T: d3d11::Resource> WrappedResource<T>
 {

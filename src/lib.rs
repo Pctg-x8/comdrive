@@ -1,9 +1,5 @@
 //! COM Driver
 
-extern crate metrics;
-extern crate widestring; extern crate univstring;
-extern crate winapi;
-
 use univstring::*;
 use std::io::{Result as IOResult, Error as IOError};
 use winapi::shared::windef::HWND;
@@ -41,66 +37,52 @@ pub trait Handle : AsRawHandle<<Self as Handle>::RawType> + AsIUnknown
     fn query_interface<Q: Handle>(&self) -> IOResult<Q> where Q: FromRawHandle<<Q as Handle>::RawType>;
 }
 /// 生のハンドルポインタから構成できる
-pub trait FromRawHandle<H> { unsafe fn from_raw_handle(*mut H) -> Self; }
-macro_rules! AutoRemover
-{
-    (for $($t: ty [$ti: ty]),*) =>
-    {
-        $(impl Drop for $t
-        {
-            fn drop(&mut self)
-            {
-                if let Some(p) = unsafe { self.0.as_mut() }
-                {
-                    if cfg!(feature = "trace_releasing")
-                    {
-                        let rc = unsafe { p.Release() };
-                        println!("trace_releasing: Dropping {}({}@{:x}) outstanding refcount: {}", stringify!($t), stringify!($ti), self.0 as usize, rc);
-                    }
-                    else { unsafe { p.Release(); } }
-                    self.0 = ::std::ptr::null_mut();
+pub trait FromRawHandle<H> { unsafe fn from_raw_handle(p: *mut H) -> Self; }
+macro_rules! AutoRemover {
+    (for $($t: ty [$ti: ty]),*) => {
+        $(impl Drop for $t {
+            fn drop(&mut self) {
+                if let Some(p) = unsafe { self.0.as_mut() } {
+                    let _rc = unsafe { p.Release() };
+                    #[cfg(feature = "trace_releasing")]
+                    trace!(target: "trace_releasing", "Dropping {}({}@{:x}) outstanding refcount: {}", stringify!($t), stringify!($ti), self.0 as usize, _rc);
+                    self.0 = std::ptr::null_mut();
                 }
             }
         })*
     }
 }
-macro_rules! HandleWrapper
-{
-    (for $t: ident[$i: ty]) =>
-    {
-        impl ::AsIUnknown for $t { fn as_iunknown(&self) -> *mut IUnknown { self.0 as _ } }
-        unsafe impl ::AsRawHandle<$i> for $t { fn as_raw_handle(&self) -> *mut $i { self.0 } }
-        impl ::Handle for $t
-        {
+macro_rules! HandleWrapper {
+    (for $t: ident[$i: ty]) => {
+        impl crate::AsIUnknown for $t { fn as_iunknown(&self) -> *mut crate::IUnknown { self.0 as _ } }
+        unsafe impl crate::AsRawHandle<$i> for $t { fn as_raw_handle(&self) -> *mut $i { self.0 } }
+        impl crate::Handle for $t {
             type RawType = $i;
-            fn query_interface<Q: ::Handle>(&self) -> IOResult<Q> where Q: ::FromRawHandle<<Q as ::Handle>::RawType>
-            {
-                let mut handle = ::std::ptr::null_mut();
-                unsafe { (*self.0).QueryInterface(&<Q::RawType as ::winapi::Interface>::uuidof(), &mut handle).to_result_with(|| Q::from_raw_handle(handle as _)) }
+            fn query_interface<Q>(&self) -> IOResult<Q> where Q: crate::Handle + crate::FromRawHandle<<Q as crate::Handle>::RawType> {
+                let mut handle = std::ptr::null_mut();
+                unsafe { (*self.0).QueryInterface(&<Q::RawType as winapi::Interface>::uuidof(), &mut handle).to_result_with(|| Q::from_raw_handle(handle as _)) }
             }
         }
         // Refcounters
         AutoRemover!(for $t[$i]);
     };
-    (for $t: ident[$i: ty] + FromRawHandle) =>
-    {
+    (for $t: ident[$i: ty] + FromRawHandle) => {
         HandleWrapper!(for $t[$i]);
         impl Clone for $t { fn clone(&self) -> Self { unsafe { (*self.0).AddRef() }; $t(self.0) } }
-        impl ::FromRawHandle<$i> for $t { unsafe fn from_raw_handle(ptr: *mut $i) -> Self { $t(ptr) } }
+        impl crate::FromRawHandle<$i> for $t { unsafe fn from_raw_handle(p: *mut $i) -> Self { $t(p) } }
     }
 }
 
 /// IUnknown Receiver
+#[repr(transparent)]
 pub struct Unknown(*mut IUnknown);
 AutoRemover!(for Unknown[IUnknown]);
 /// Temporary Slot
+#[repr(transparent)]
 pub struct ComPtr<T>(pub *mut T);
-impl<T> Drop for ComPtr<T>
-{
-    fn drop(&mut self)
-    {
-        if let Some(p) = unsafe { self.0.as_mut() }
-        {
+impl<T> Drop for ComPtr<T> {
+    fn drop(&mut self) {
+        if let Some(p) = unsafe { self.0.as_mut() } {
             /*let rc = */unsafe { std::mem::transmute::<_, &mut IUnknown>(p).Release() };
             // println!("Dropping ComPtr outstanding refcount: {}", rc);
             self.0 = std::ptr::null_mut();

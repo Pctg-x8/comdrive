@@ -8,7 +8,7 @@ use metrics::*;
 use winapi::ctypes::c_void;
 pub use winapi::um::dwrite::DWRITE_GLYPH_OFFSET as GlyphOffset;
 use std::ops::Deref;
-use std::mem::{uninitialized, size_of, MaybeUninit};
+use std::mem::{size_of, MaybeUninit};
 use std::ptr::{null_mut, null};
 use std::slice;
 
@@ -46,6 +46,7 @@ pub use winapi::um::dwrite::{
 };
 
 /// Driver class for IDWriteFactory
+#[repr(transparent)]
 pub struct Factory(*mut IDWriteFactory); HandleWrapper!(for Factory[IDWriteFactory]);
 impl FromRawHandle<IDWriteFactory> for Factory { unsafe fn from_raw_handle(h: *mut IDWriteFactory) -> Self { Factory(h) } }
 impl Factory
@@ -71,6 +72,7 @@ impl Default for FontOptions
 }
 
 /// Driver object for IDWriteTextFormat
+#[repr(transparent)]
 pub struct TextFormat(*mut IDWriteTextFormat); HandleWrapper!(for TextFormat[IDWriteTextFormat]);
 impl FromRawHandle<IDWriteTextFormat> for TextFormat { unsafe fn from_raw_handle(h: *mut IDWriteTextFormat) -> Self { TextFormat(h) } }
 impl Factory
@@ -90,6 +92,7 @@ impl Factory
 }
 
 /// Driver object for IDWriteTextLayout1
+#[repr(transparent)]
 pub struct TextLayout(*mut IDWriteTextLayout1); HandleWrapper!(for TextLayout[IDWriteTextLayout1]);
 impl FromRawHandle<IDWriteTextLayout1> for TextLayout { unsafe fn from_raw_handle(h: *mut IDWriteTextLayout1) -> Self { TextLayout(h) } }
 impl Factory
@@ -119,8 +122,8 @@ impl TextLayout
     {
         unsafe
         {
-            let mut metr = uninitialized();
-            (*self.0).GetMetrics(&mut metr).to_result(metr)
+            let mut metr = MaybeUninit::uninit();
+            (*self.0).GetMetrics(metr.as_mut_ptr()).to_result(metr.assume_init())
         }
     }
     /// Overhanging Metrics of the Layout
@@ -128,8 +131,8 @@ impl TextLayout
     {
         unsafe
         {
-            let mut metr = uninitialized();
-            (*self.0).GetOverhangMetrics(&mut metr).to_result(metr)
+            let mut metr = MaybeUninit::uninit();
+            (*self.0).GetOverhangMetrics(metr.as_mut_ptr()).to_result(metr.assume_init())
         }
     }
     /// Metrics of each lines
@@ -165,6 +168,7 @@ impl TextLayout
 }
 
 /// フォントファミリー
+#[repr(transparent)]
 pub struct FontFamily(*mut IDWriteFontFamily); HandleWrapper!(for FontFamily[IDWriteFontFamily]);
 impl FontCollection
 {
@@ -198,29 +202,28 @@ impl Deref for FontFamily
 }
 
 /// フォントリスト
+#[repr(transparent)]
 pub struct FontList(*mut IDWriteFontList); HandleWrapper!(for FontList[IDWriteFontList]);
 
 /// フォント
+#[repr(transparent)]
 pub struct Font(*mut IDWriteFont); HandleWrapper!(for Font[IDWriteFont]);
-impl FontList
-{
-    pub fn font(&self, index: u32) -> IOResult<Font>
-    {
+impl FontList {
+    pub fn font(&self, index: u32) -> IOResult<Font> {
         let mut handle = std::ptr::null_mut();
         unsafe { (*self.0).GetFont(index, &mut handle).to_result_with(|| Font(handle)) }
     }
 }
-impl Font
-{
-    pub fn metrics(&self) -> IOResult<FontMetrics>
-    {
-        let mut metr = unsafe { uninitialized() };
-        unsafe { (*self.0).GetMetrics(&mut metr) };
-        return Ok(metr);
+impl Font {
+    pub fn metrics(&self) -> FontMetrics {
+        let mut metr = MaybeUninit::uninit();
+        unsafe { (*self.0).GetMetrics(metr.as_mut_ptr()) };
+        unsafe { metr.assume_init() }
     }
 }
 
 /// フォントフェイス
+#[repr(transparent)]
 pub struct FontFace(*mut IDWriteFontFace); HandleWrapper!(for FontFace[IDWriteFontFace]);
 impl Font
 {
@@ -234,7 +237,7 @@ impl FontFace
 {
     pub fn metrics(&self) -> FontMetrics
     {
-        let mut metr = std::mem::MaybeUninit::uninit();
+        let mut metr = MaybeUninit::uninit();
         unsafe
         {
             (*self.0).GetMetrics(metr.as_mut_ptr());
@@ -290,6 +293,7 @@ impl FontFace
 }
 
 /// フォントコレクション
+#[repr(transparent)]
 pub struct FontCollection(*mut IDWriteFontCollection); HandleWrapper!(for FontCollection[IDWriteFontCollection]);
 impl Factory
 {
@@ -325,6 +329,7 @@ impl Factory
 }
 
 /// フォントファイル
+#[repr(transparent)]
 pub struct FontFile(*mut IDWriteFontFile); HandleWrapper!(for FontFile[IDWriteFontFile]);
 impl Factory
 {
@@ -354,6 +359,7 @@ impl FontFile
 }
 
 /// フォントファイルローダ
+#[repr(transparent)]
 pub struct FontFileLoader(*mut IDWriteFontFileLoader); HandleWrapper!(for FontFileLoader[IDWriteFontFileLoader]);
 impl FontFile
 {
@@ -366,6 +372,7 @@ impl FontFile
 }
 
 /// フォントファイルストリーム
+#[repr(transparent)]
 pub struct FontFileStream(*mut IDWriteFontFileStream); HandleWrapper!(for FontFileStream[IDWriteFontFileStream]);
 impl FontFileLoader
 {

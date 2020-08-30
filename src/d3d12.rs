@@ -60,6 +60,7 @@ pub enum InputClassification
 }
 
 /// Driver object for ID2D1Device
+#[repr(transparent)]
 pub struct Device(*mut ID3D12Device); HandleWrapper!(for Device[ID3D12Device] + FromRawHandle);
 impl Device
 {
@@ -102,6 +103,7 @@ pub enum CommandType
     Compute = D3D12_COMMAND_LIST_TYPE_COMPUTE, Copy = D3D12_COMMAND_LIST_TYPE_COPY
 }
 /// コマンドキュー
+#[repr(transparent)]
 pub struct CommandQueue(*mut ID3D12CommandQueue); HandleWrapper!(for CommandQueue[ID3D12CommandQueue] + FromRawHandle);
 impl Device
 {
@@ -212,6 +214,7 @@ impl DeviceDescriptorHandle
 
 /// リソース生成フラグ
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
+#[repr(transparent)]
 pub struct ResourceFlag(D3D12_RESOURCE_FLAGS);
 unsafe impl MarkForSameBits<D3D12_RESOURCE_FLAGS> for ResourceFlag {}
 impl ResourceFlag
@@ -225,6 +228,7 @@ impl ResourceFlag
     pub fn simultaneous_access(&self) -> Self { ResourceFlag(self.0 | D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS) }
 }
 /// リソースの詳細
+#[repr(transparent)]
 pub struct ResourceDesc(D3D12_RESOURCE_DESC);
 unsafe impl MarkForSameBits<D3D12_RESOURCE_DESC> for ResourceDesc {}
 impl Borrow<D3D12_RESOURCE_DESC> for ResourceDesc { fn borrow(&self) -> &D3D12_RESOURCE_DESC { &self.0 } }
@@ -279,6 +283,7 @@ pub enum OptimizedClearValue
     Color(DXGI_FORMAT, f32, f32, f32, f32), DepthStencil(DXGI_FORMAT, f32, u8)
 }
 /// リソースハンドル
+#[repr(transparent)]
 pub struct Resource(*mut ID3D12Resource); HandleWrapper!(for Resource[ID3D12Resource] + FromRawHandle);
 impl Device
 {
@@ -339,6 +344,7 @@ impl Resource
 }
 
 /// ヒープのプロパティ
+#[repr(transparent)]
 pub struct HeapProperty(D3D12_HEAP_PROPERTIES);
 unsafe impl MarkForSameBits<D3D12_HEAP_PROPERTIES> for HeapProperty {}
 impl Borrow<D3D12_HEAP_PROPERTIES> for HeapProperty { fn borrow(&self) -> &D3D12_HEAP_PROPERTIES { &self.0 } }
@@ -422,6 +428,7 @@ impl MappingRange for std::ops::RangeFull
 impl MappingRange for Option<Range> { fn into_range_object(self) -> Option<Range> { self } }
 
 /// ルートシグネチャのパラメータ(シェーダ定数に関わる)
+#[repr(transparent)]
 pub struct RootParameter(D3D12_ROOT_PARAMETER);
 unsafe impl MarkForSameBits<D3D12_ROOT_PARAMETER> for RootParameter {}
 impl Borrow<D3D12_ROOT_PARAMETER> for RootParameter { fn borrow(&self) -> &D3D12_ROOT_PARAMETER { &self.0 } }
@@ -471,6 +478,7 @@ impl RootParameter
     }
 }
 /// 固定サンプラー
+#[repr(transparent)]
 pub struct StaticSampler(D3D12_STATIC_SAMPLER_DESC);
 unsafe impl MarkForSameBits<D3D12_STATIC_SAMPLER_DESC> for StaticSampler {}
 impl Borrow<D3D12_STATIC_SAMPLER_DESC> for StaticSampler { fn borrow(&self) -> &D3D12_STATIC_SAMPLER_DESC { &self.0 } }
@@ -490,6 +498,7 @@ impl StaticSampler
     }
 }
 /// ルートシグネチャ
+#[repr(transparent)]
 pub struct RootSignature(*mut ID3D12RootSignature); HandleWrapper!(for RootSignature[ID3D12RootSignature] + FromRawHandle);
 impl Device
 {
@@ -532,6 +541,7 @@ impl RootSignature
     }
 }
 /// パイプラインステート
+#[repr(transparent)]
 pub struct PipelineState(*mut ID3D12PipelineState); HandleWrapper!(for PipelineState[ID3D12PipelineState] + FromRawHandle);
 impl Device
 {
@@ -707,6 +717,7 @@ impl ShaderBinary
 impl Borrow<D3D12_SHADER_BYTECODE> for ShaderBinary { fn borrow(&self) -> &D3D12_SHADER_BYTECODE { &self.1 } }
 impl Deref for ShaderBinary { type Target = [u8]; fn deref(&self) -> &[u8] { &self.0 } }
 /// ブレンディング
+#[repr(transparent)]
 pub struct Blending(D3D12_RENDER_TARGET_BLEND_DESC);
 unsafe impl MarkForSameBits<D3D12_RENDER_TARGET_BLEND_DESC> for Blending {}
 impl Borrow<D3D12_RENDER_TARGET_BLEND_DESC> for Blending { fn borrow(&self) -> &D3D12_RENDER_TARGET_BLEND_DESC { &self.0 } }
@@ -735,6 +746,7 @@ impl Blending
 }
 
 /// 同期オブジェクト(フェンス)
+#[repr(transparent)]
 pub struct Fence(*mut ID3D12Fence); HandleWrapper!(for Fence[ID3D12Fence] + FromRawHandle);
 impl Device
 {
@@ -759,6 +771,7 @@ impl Fence
 }
 
 /// グラフィックス操作用のコマンドリスト
+#[repr(transparent)]
 pub struct GraphicsCommandList(*mut ID3D12GraphicsCommandList); HandleWrapper!(for GraphicsCommandList[ID3D12GraphicsCommandList] + FromRawHandle);
 impl Device
 {
@@ -990,6 +1003,7 @@ impl RootConstant for i32 { fn passing_form(self) -> u32 { unsafe { std::mem::tr
 impl RootConstant for u32 { fn passing_form(self) -> u32 { self } }
 
 /// リソースバリア
+#[repr(transparent)]
 pub struct ResourceBarrier(D3D12_RESOURCE_BARRIER);
 unsafe impl MarkForSameBits<D3D12_RESOURCE_BARRIER> for ResourceBarrier {}
 impl Borrow<D3D12_RESOURCE_BARRIER> for ResourceBarrier { fn borrow(&self) -> &D3D12_RESOURCE_BARRIER { &self.0 } }
@@ -1044,6 +1058,7 @@ pub fn index_buffer_view(location: GraphicsVirtualPtr, element_count: usize) -> 
     }
 }
 /// GPU仮想アドレスのラップ
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug)] pub struct GraphicsVirtualPtr(pub D3D12_GPU_VIRTUAL_ADDRESS);
 impl GraphicsVirtualPtr
 {

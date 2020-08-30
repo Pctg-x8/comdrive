@@ -1,7 +1,8 @@
 //! Direct3D Common Exports
 
 use winapi::um::d3dcommon::*;
-use d3d12; use std::io::Result as IOResult;
+use crate::d3d12;
+use std::io::Result as IOResult;
 use std::borrow::Cow;
 
 #[repr(u32)] #[derive(Clone, Copy)] #[allow(non_camel_case_types, dead_code)]
@@ -15,7 +16,7 @@ pub enum FeatureLevel
 /// シェーダ生成のもとになるオブジェクト
 pub trait ShaderSource { fn binary(&self) -> IOResult<Cow<[u8]>>; }
 /// ファイルパス
-impl ShaderSource for str
+impl ShaderSource for std::path::Path
 {
     fn binary(&self) -> IOResult<Cow<[u8]>>
     {

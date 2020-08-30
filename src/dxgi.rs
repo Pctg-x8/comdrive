@@ -30,6 +30,7 @@ pub use winapi::shared::dxgiformat::
 };
 
 /// Driver object for IDXGIFactory2
+#[repr(transparent)]
 pub struct Factory(*mut IDXGIFactory2);
 impl Factory
 {
@@ -47,10 +48,13 @@ impl Factory
     }
 }
 /// Driver object for IDXGIAdapter
+#[repr(transparent)]
 pub struct Adapter(*mut IDXGIAdapter); HandleWrapper!(for Adapter[IDXGIAdapter] + FromRawHandle);
 /// Driver object for IDXGIDevice
+#[repr(transparent)]
 pub struct Device(*mut IDXGIDevice1); HandleWrapper!(for Device[IDXGIDevice1] + FromRawHandle);
 /// Driver object for IDXGISurface
+#[repr(transparent)]
 pub struct Surface(*mut IDXGISurface); HandleWrapper!(for Surface[IDXGISurface] + FromRawHandle);
 
 pub trait DeviceChild { fn parent(&self) -> IOResult<Device>; }
@@ -79,8 +83,8 @@ impl Adapter
     }
     pub fn desc(&self) -> IOResult<DXGI_ADAPTER_DESC>
     {
-        let mut s = unsafe { std::mem::uninitialized() };
-        unsafe { (*self.0).GetDesc(&mut s) }.to_result(s)
+        let mut s = std::mem::MaybeUninit::uninit();
+        unsafe { (*self.0).GetDesc(s.as_mut_ptr()).to_result(s.assume_init()) }
     }
 }
 
@@ -98,7 +102,7 @@ pub struct IDXGIDebugVtbl
 
     ReportLiveObjects: unsafe extern "system" fn(*mut IDXGIDebug, GUID, DXGI_DEBUG_RLO_FLAGS) -> HRESULT
 }
-#[repr(C)]
+#[repr(transparent)]
 pub struct IDXGIDebug(*const IDXGIDebugVtbl);
 impl winapi::Interface for IDXGIDebug
 {
@@ -123,6 +127,7 @@ const DEBUG_DXGI: GUID = GUID { Data1: 0x25cddaa4, Data2: 0xb1c6, Data3: 0x47e1,
 const DEBUG_APP: GUID = GUID { Data1: 0x6cd6e01, Data2: 0x4219, Data3: 0x4ebd, Data4: [0x87, 0x09, 0x27, 0xed, 0x23, 0x36, 0x0c, 0x62] };
 pub enum DebugRegion { All, DirectX, DXGI, App }
 /// デバッグインターフェイス
+#[repr(transparent)]
 pub struct Debug(*mut IDXGIDebug); HandleWrapper!(for Debug[IDXGIDebug] + FromRawHandle);
 impl Debug
 {

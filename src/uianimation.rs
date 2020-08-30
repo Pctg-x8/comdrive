@@ -3,9 +3,8 @@
 use winapi::ctypes::*;
 use winapi::shared::ntdef::{ULONG, HRESULT};
 use winapi::shared::guiddef::{REFIID, GUID};
-use winapi::um::unknwnbase::*;
 use std::io::Result as IOResult;
-use {ResultCarrier, AsRawHandle};
+use crate::{ResultCarrier, AsRawHandle};
 use std::ptr::null_mut;
 
 pub type Seconds = c_double;
@@ -27,7 +26,7 @@ pub type Seconds = c_double;
     pub GetTime: extern "system" fn(This: *mut IUIAnimationTimer, seconds: *mut Seconds) -> HRESULT,
     pub SetFrameRateThreshold: extern "system" fn(This: *mut IUIAnimationTimer, framesPerSeconds: u32) -> HRESULT
 }
-#[repr(C)] pub struct IUIAnimationTimer(*const IUIAnimationTimerVtbl);
+#[repr(transparent)] pub struct IUIAnimationTimer(*const IUIAnimationTimerVtbl);
 #[allow(non_upper_case_globals)]
 /// BFCD4A0C-06B6-4384-B768-0DAA792C380E
 const CLSID_UIAnimation: GUID = GUID
@@ -56,14 +55,15 @@ impl ::winapi::Interface for IUIAnimationTimer
     }
 }
 
+#[repr(transparent)]
 pub struct Timer(*mut IUIAnimationTimer); HandleWrapper!(for Timer[IUIAnimationTimer] + FromRawHandle);
 impl Timer
 {
     pub fn new() -> IOResult<Self>
     {
-        ::co_create_inproc_instance(&CLSID_UIAnimation).map(Timer)
+        crate::co_create_inproc_instance(&CLSID_UIAnimation).map(Timer)
     }
-    pub fn set_update_handler(&mut self, handler: Option<&AsRawHandle<IUIAnimationTimerUpdateHandler>>,
+    pub fn set_update_handler(&mut self, handler: Option<&dyn AsRawHandle<IUIAnimationTimerUpdateHandler>>,
         idle_behavior: IdleBehavior) -> IOResult<()>
     {
         unsafe
@@ -96,7 +96,7 @@ impl Timer
     pub SetTimerClientEventHandler: extern "system" fn(This: *mut IUIAnimationTimerUpdateHandler, handler: *mut IUIAnimationTimerClientEventHandler) -> HRESULT,
     pub ClearTimerClientEventHandler: extern "system" fn(This: *mut IUIAnimationTimerUpdateHandler) -> HRESULT
 }
-#[repr(C)] pub struct IUIAnimationTimerUpdateHandler(*const IUIAnimationTimerUpdateHandlerVtbl);
+#[repr(transparent)] pub struct IUIAnimationTimerUpdateHandler(*const IUIAnimationTimerUpdateHandlerVtbl);
 impl IUIAnimationTimerUpdateHandler
 {
     #[allow(non_snake_case)]
@@ -105,7 +105,7 @@ impl IUIAnimationTimerUpdateHandler
     pub fn Release(&mut self) -> ULONG { unsafe { ((*self.0).Release)(self) } }
 }
 /// 195509B7-5D5E-4e3e-B278-EE3759B367AD
-impl ::winapi::Interface for IUIAnimationTimerUpdateHandler
+impl winapi::Interface for IUIAnimationTimerUpdateHandler
 {
     fn uuidof() -> GUID
     {
@@ -124,7 +124,7 @@ impl ::winapi::Interface for IUIAnimationTimerUpdateHandler
     pub Release: extern "system" fn(This: *mut IUIAnimationTimerClientEventHandler) -> ULONG,
     pub OnTimerClientStatusChanged: extern "system" fn(This: *mut IUIAnimationTimerClientEventHandler, newStatus: TimerClientStatus, previousStatus: TimerClientStatus) -> HRESULT
 }
-#[repr(C)] pub struct IUIAnimationTimerClientEventHandler(*const IUIAnimationTimerClientEventHandlerVtbl);
+#[repr(transparent)] pub struct IUIAnimationTimerClientEventHandler(*const IUIAnimationTimerClientEventHandlerVtbl);
 impl IUIAnimationTimerClientEventHandler
 {
     #[allow(non_snake_case)]
@@ -143,4 +143,4 @@ impl IUIAnimationTimerClientEventHandler
     pub OnPostUpdate: extern "system" fn(This: *mut IUIAnimationTimerEventHandler) -> HRESULT,
     pub OnRenderingTooSlow: extern "system" fn(This: *mut IUIAnimationTimerEventHandler, framesPerSecond: u32) -> HRESULT
 }
-#[repr(C)] pub struct IUIAnimationTimerEventHandler(*const IUIAnimationTimerEventHandlerVtbl);
+#[repr(transparent)] pub struct IUIAnimationTimerEventHandler(*const IUIAnimationTimerEventHandlerVtbl);

@@ -3,6 +3,7 @@ name = "comdrive"
 version = "0.3.0"
 authors = ["S.Percentage"]
 description = "COM Object Driver for Rust"
+edition = "2018"
 
 [features]
 trace_releasing = ["log"]

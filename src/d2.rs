@@ -18,6 +18,7 @@ pub enum AntialiasMode
 }
 
 /// Driver object for ID2D1Factory
+#[repr(transparent)]
 pub struct Factory(*mut ID2D1Factory); HandleWrapper!(for Factory[ID2D1Factory] + FromRawHandle);
 impl Factory
 {
@@ -34,6 +35,7 @@ impl Factory
 }
 
 /// Driver object for ID2D1Device
+#[repr(transparent)]
 pub struct Device(*mut ID2D1Device); HandleWrapper!(for Device[ID2D1Device] + FromRawHandle);
 impl Device
 {
@@ -60,6 +62,7 @@ impl Device
 pub const TRANSPARENT_COLOR: ColorF = ColorF { r: 0.0, g: 0.0, b: 0.0, a: 0.0 };
 
 /// Driver object for ID2D1HwndRenderTarget
+#[repr(transparent)]
 pub struct HwndRenderTarget(*mut ID2D1HwndRenderTarget); HandleWrapper!(for HwndRenderTarget[ID2D1HwndRenderTarget] + FromRawHandle);
 impl Factory
 {
@@ -90,6 +93,7 @@ impl HwndRenderTarget
 }
 
 /// Driver object for ID2D1DeviceContext
+#[repr(transparent)]
 pub struct DeviceContext(*mut ID2D1DeviceContext); HandleWrapper!(for DeviceContext[ID2D1DeviceContext] + FromRawHandle);
 impl Device
 {
@@ -291,6 +295,7 @@ impl DeviceContext
     pub fn draw_effected<E: Effect + ?Sized, P: Borrow<D2D1_POINT_2F> + ?Sized>(&self, offs: &P, fx: &E) -> &Self { self.draw(offs, &fx.get_output()) }
 }
 /// Driver object for ID2D1Bitmap(Context bound object)
+#[repr(transparent)]
 pub struct Bitmap(*mut ID2D1Bitmap); HandleWrapper!(for Bitmap[ID2D1Bitmap] + FromRawHandle);
 impl DeviceContext
 {
@@ -304,9 +309,10 @@ impl DeviceContext
 }
 pub enum RenderableBitmapSource<'s>
 {
-    FromDxgiSurface(&'s dxgi::SurfaceChild), New(Size2U)
+    FromDxgiSurface(&'s dyn dxgi::SurfaceChild), New(Size2U)
 }
 /// Driver object for ID2D1Bitmap1
+#[repr(transparent)]
 pub struct Bitmap1(*mut ID2D1Bitmap1); HandleWrapper!(for Bitmap1[ID2D1Bitmap1] + FromRawHandle);
 impl DeviceContext
 {
@@ -344,6 +350,7 @@ impl DeviceContext
         unsafe { (*self.0).GetTarget(&mut h) }; ImageRef(h)
     }
 }
+#[repr(transparent)]
 pub struct ImageRef(*mut ID2D1Image);
 /// Image(2D Pixel Producer) Abstraction
 pub trait Image { fn as_raw_image(&self) -> *mut ID2D1Image; }
@@ -354,15 +361,19 @@ impl Image for Bitmap1 { fn as_raw_image(&self) -> *mut ID2D1Image { self.0 as _
 /// Driver object for ID2D1Brush
 pub trait Brush { fn as_raw_brush(&self) -> *mut ID2D1Brush; }
 /// Driver object for ID2D1SolidColorBrush
+#[repr(transparent)]
 pub struct SolidColorBrush(*mut ID2D1SolidColorBrush); HandleWrapper!(for SolidColorBrush[ID2D1SolidColorBrush] + FromRawHandle);
 /// Driver object for ID2D1LinearGradientBrush
+#[repr(transparent)]
 pub struct LinearGradientBrush(*mut ID2D1LinearGradientBrush); HandleWrapper!(for LinearGradientBrush[ID2D1LinearGradientBrush] + FromRawHandle);
 /// Driver object for ID2D1RadialGradientBrush
+#[repr(transparent)]
 pub struct RadialGradientBrush(*mut ID2D1RadialGradientBrush); HandleWrapper!(for RadialGradientBrush[ID2D1RadialGradientBrush] + FromRawHandle);
 impl Brush for SolidColorBrush { fn as_raw_brush(&self) -> *mut ID2D1Brush { self.0 as _ } }
 impl Brush for LinearGradientBrush { fn as_raw_brush(&self) -> *mut ID2D1Brush { self.0 as _ } }
 impl Brush for RadialGradientBrush { fn as_raw_brush(&self) -> *mut ID2D1Brush { self.0 as _ } }
 /// Driver object for ID2D1GradientStopCollection
+#[repr(transparent)]
 pub struct GradientStopCollection(*mut ID2D1GradientStopCollection); HandleWrapper!(for GradientStopCollection[ID2D1GradientStopCollection] + FromRawHandle);
 #[repr(C)] #[derive(Clone)]
 pub struct GradientStop(pub f32, pub ColorF);
@@ -378,6 +389,7 @@ impl SolidColorBrush
 }
 
 /// Driver class for ID2D1PathGeometry
+#[repr(transparent)]
 pub struct PathGeometry(*mut ID2D1PathGeometry); HandleWrapper!(for PathGeometry[ID2D1PathGeometry] + FromRawHandle);
 impl Factory
 {
@@ -388,6 +400,7 @@ impl Factory
     }
 }
 /// Driver class for ID2D1GeometrySink
+#[repr(transparent)]
 pub struct GeometrySink(*mut ID2D1GeometrySink); HandleWrapper!(for GeometrySink[ID2D1GeometrySink] + FromRawHandle);
 impl PathGeometry
 {
@@ -466,6 +479,7 @@ impl GeometrySegment for D2D1_QUADRATIC_BEZIER_SEGMENT
 }
 
 /// Driver class for ID2D1GaussianBlurEffect
+#[repr(transparent)]
 pub struct GaussianBlurEffect(*mut ID2D1Effect); HandleWrapper!(for GaussianBlurEffect[ID2D1Effect] + FromRawHandle);
 impl DeviceContext
 {
@@ -513,6 +527,7 @@ pub trait Effect
 impl Effect for GaussianBlurEffect { fn as_raw_effect(&self) -> *mut ID2D1Effect { self.0 } }
 
 /// Matrix 3x2
+#[repr(transparent)]
 pub struct Matrix3x2F(D2D1_MATRIX_3X2_F);
 impl Matrix3x2F
 {

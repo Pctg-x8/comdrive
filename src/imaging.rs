@@ -13,6 +13,7 @@ use metrics::*;
 pub use winapi::um::wincodec::GUID_WICPixelFormat32bppPBGRA;
 
 /// Driver object for IWICImagingFactory
+#[repr(transparent)]
 pub struct Factory(*mut IWICImagingFactory); HandleWrapper!(for Factory[IWICImagingFactory] + FromRawHandle);
 impl Factory
 {
@@ -26,6 +27,7 @@ impl Factory
 }
 
 /// Driver object for IWICBitmapDecoder
+#[repr(transparent)]
 pub struct BitmapDecoder(*mut IWICBitmapDecoder); HandleWrapper!(for BitmapDecoder[IWICBitmapDecoder] + FromRawHandle);
 impl Factory
 {
@@ -49,9 +51,11 @@ impl BitmapDecoder
 }
 
 /// Driver object for IWICBitmapFrameDecode
+#[repr(transparent)]
 pub struct BitmapFrameDecode(*mut IWICBitmapFrameDecode); HandleWrapper!(for BitmapFrameDecode[IWICBitmapFrameDecode] + FromRawHandle);
 
 /// Driver object for IWICFormatConverter
+#[repr(transparent)]
 pub struct FormatConverter(*mut IWICFormatConverter); HandleWrapper!(for FormatConverter[IWICFormatConverter] + FromRawHandle);
 impl Factory
 {

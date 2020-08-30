@@ -23,11 +23,12 @@ pub enum BitmapInterpolationMode
 }
 
 /// Driver object for IDCompositionDesktopDevice
+#[repr(transparent)]
 pub struct Device(*mut IDCompositionDesktopDevice); HandleWrapper!(for Device[IDCompositionDesktopDevice]);
 impl Device
 {
     /// Create
-    pub fn new(render_device: Option<&AsIUnknown>) -> IOResult<Self>
+    pub fn new(render_device: Option<&dyn AsIUnknown>) -> IOResult<Self>
     {
         let mut handle = std::ptr::null_mut();
         unsafe { DCompositionCreateDevice3(render_device.map(AsIUnknown::as_iunknown).unwrap_or(std::ptr::null_mut()),
@@ -40,6 +41,7 @@ impl Device
 }
 
 /// Driver object for IDCompositionTarget
+#[repr(transparent)]
 pub struct Target(*mut IDCompositionTarget); HandleWrapper!(for Target[IDCompositionTarget]);
 pub trait TargetProvider<TargetBaseObject, TargetType: Handle<RawType = IDCompositionTarget>>
 {
@@ -86,7 +88,9 @@ macro_rules! ObtainPropertySetter
 }
 
 /// Driver object for IDCompositionVisual3
+#[repr(transparent)]
 pub struct Visual(*mut IDCompositionVisual3); HandleWrapper!(for Visual[IDCompositionVisual3] + FromRawHandle);
+#[repr(transparent)]
 struct Visual2(*mut IDCompositionVisual2); HandleWrapper!(for Visual2[IDCompositionVisual2]);
 impl Device
 {
@@ -126,7 +130,7 @@ impl Visual
     /// Set Effect
     pub fn set_effect<E: Effect>(&self, effect: &E) -> IOResult<()> { unsafe { (*self.0).SetEffect(effect.as_raw_effect()).checked() } }
     /// Set Content
-    pub fn set_content(&self, content: Option<&AsIUnknown>) -> IOResult<()>
+    pub fn set_content(&self, content: Option<&dyn AsIUnknown>) -> IOResult<()>
     {
         unsafe { (*self.0).SetContent(content.map(AsIUnknown::as_iunknown).unwrap_or(std::ptr::null_mut())).checked() }
     }
@@ -171,8 +175,10 @@ pub trait Effect { fn as_raw_effect(&self) -> *const IDCompositionEffect; }
 impl<T: Transform> Effect for T { fn as_raw_effect(&self) -> *const IDCompositionEffect { self.as_raw_transform() as _ } }
 
 /// Driver object for IDCompositionScaleTransform
+#[repr(transparent)]
 pub struct ScaleTransform(*mut IDCompositionScaleTransform); HandleWrapper!(for ScaleTransform[IDCompositionScaleTransform]);
 /// Driver object for IDCompositionRotateTransform
+#[repr(transparent)]
 pub struct RotateTransform(*mut IDCompositionRotateTransform); HandleWrapper!(for RotateTransform[IDCompositionRotateTransform]);
 impl Device
 {
@@ -238,11 +244,12 @@ impl RotateTransform
 impl Transform for ScaleTransform  { fn as_raw_transform(&self) -> *const IDCompositionTransform { self.0 as _ } }
 impl Transform for RotateTransform { fn as_raw_transform(&self) -> *const IDCompositionTransform { self.0 as _ } }
 /// Driver object for IDCompositionTransform(Group)
+#[repr(transparent)]
 pub struct TransformGroup(*mut IDCompositionTransform); HandleWrapper!(for TransformGroup[IDCompositionTransform]);
 impl Device
 {
     /// Make Group of Transforms
-    pub fn group_transforms(&self, tfs: &[&Transform]) -> IOResult<TransformGroup>
+    pub fn group_transforms(&self, tfs: &[&dyn Transform]) -> IOResult<TransformGroup>
     {
         let tfs = tfs.into_iter().map(|t| t.as_raw_transform()).collect::<Vec<_>>();
         let mut handle = std::ptr::null_mut();
@@ -252,8 +259,10 @@ impl Device
 impl Transform for TransformGroup { fn as_raw_transform(&self) -> *const IDCompositionTransform { self.0 } }
 
 /// Driver object for IDCompositionSurfaceFactory for Direct2D
+#[repr(transparent)]
 pub struct SurfaceFactory2(*mut IDCompositionSurfaceFactory); HandleWrapper!(for SurfaceFactory2[IDCompositionSurfaceFactory] + FromRawHandle);
 /// Driver object for IDCompositionSurfaceFactory for Direct3D
+#[repr(transparent)]
 pub struct SurfaceFactory3(*mut IDCompositionSurfaceFactory); HandleWrapper!(for SurfaceFactory3[IDCompositionSurfaceFactory] + FromRawHandle);
 pub trait SurfaceFactoryProvider<RenderDevice: AsIUnknown, FactoryType> : AsRawHandle<IDCompositionDesktopDevice>
     where FactoryType: AsRawHandle<IDCompositionSurfaceFactory> + FromRawHandle<IDCompositionSurfaceFactory>
@@ -270,8 +279,10 @@ pub trait SurfaceFactoryProvider<RenderDevice: AsIUnknown, FactoryType> : AsRawH
 impl SurfaceFactoryProvider<d2::Device, SurfaceFactory2> for Device {}
 impl SurfaceFactoryProvider<d3d11::Device, SurfaceFactory3> for Device {}
 /// Driver object for IDCompositionSurface for Direct2D
+#[repr(transparent)]
 pub struct Surface2(*mut IDCompositionSurface); HandleWrapper!(for Surface2[IDCompositionSurface]);
 /// Driver object for IDCompositionSurface for Direct3D
+#[repr(transparent)]
 pub struct Surface3(*mut IDCompositionSurface); HandleWrapper!(for Surface3[IDCompositionSurface]);
 pub trait SurfaceFactory
 {
@@ -312,45 +323,43 @@ pub trait Surface<'s>
 
 pub struct SurfaceRenderContext2<'s>(&'s Surface2, d2::DeviceContext, POINT);
 pub struct SurfaceRenderContext3<'s>(&'s Surface3, d3d11::Texture2D, POINT);
-impl<'s> Surface<'s> for Surface2
-{
+impl<'s> Surface<'s> for Surface2 {
     type RenderContext = SurfaceRenderContext2<'s>;
-    fn begin_draw(&'s self) -> IOResult<SurfaceRenderContext2<'s>>
-    {
-        let (mut handle, mut offs) = (std::ptr::null_mut(), unsafe { std::mem::uninitialized() });
-        unsafe { (*self.0).BeginDraw(std::ptr::null(), &ID2D1DeviceContext::uuidof(), &mut handle, &mut offs) }
-            .to_result_with(|| SurfaceRenderContext2(&self, unsafe { d2::DeviceContext::from_raw_handle(handle as _) }, offs))
+    fn begin_draw(&'s self) -> IOResult<SurfaceRenderContext2<'s>> {
+        let (mut handle, mut offs) = (std::ptr::null_mut(), std::mem::MaybeUninit::uninit());
+        let r = unsafe {
+            (*self.0).BeginDraw(std::ptr::null(), &ID2D1DeviceContext::uuidof(), &mut handle, offs.as_mut_ptr())
+        };
+        r.to_result_with(|| SurfaceRenderContext2(
+            &self, unsafe { d2::DeviceContext::from_raw_handle(handle as _) }, unsafe { offs.assume_init() }
+        ))
     }
 }
-impl<'s> Surface<'s> for Surface3
-{
+impl<'s> Surface<'s> for Surface3 {
     type RenderContext = SurfaceRenderContext3<'s>;
-    fn begin_draw(&'s self) -> IOResult<SurfaceRenderContext3<'s>>
-    {
-        let (mut xt, mut offs) = (std::ptr::null_mut(), unsafe { std::mem::uninitialized() });
-        let xt = unsafe { (*self.0).BeginDraw(std::ptr::null(), &IDXGISurface::uuidof(), &mut xt, &mut offs) }
+    fn begin_draw(&'s self) -> IOResult<SurfaceRenderContext3<'s>> {
+        let (mut xt, mut offs) = (std::ptr::null_mut(), std::mem::MaybeUninit::uninit());
+        let xt = unsafe { (*self.0).BeginDraw(std::ptr::null(), &IDXGISurface::uuidof(), &mut xt, offs.as_mut_ptr()) }
             .to_result_with(|| unsafe { dxgi::Surface::from_raw_handle(xt as _) })?;
-        xt.query_interface().map(|t| SurfaceRenderContext3(&self, t, offs))
+        xt.query_interface().map(|t| SurfaceRenderContext3(&self, t, unsafe { offs.assume_init() }))
     }
 }
-impl<'s> SurfaceRenderContext2<'s>
-{
-    pub fn apply_offset(self) -> Self
-    {
+impl<'s> SurfaceRenderContext2<'s> {
+    pub fn apply_offset(self) -> Self {
         self.1.set_transform(&d2::Matrix3x2F::translation(self.2.x as f32, self.2.y as f32));
         self
     }
     pub fn renderer(&self) -> &d2::DeviceContext { &self.1 }
     pub fn offset(&self) -> Point2 { self.2.into() }
 }
-impl<'s> SurfaceRenderContext3<'s>
-{
+impl<'s> SurfaceRenderContext3<'s> {
     pub fn render_target(&self) -> &d3d11::Texture2D { &self.1 }
     pub fn offset(&self) -> Point2 { self.2.into() }
 }
 impl<'s> Drop for SurfaceRenderContext2<'s> { fn drop(&mut self) { unsafe { (*(self.0).0).EndDraw().checked().unwrap() }; } }
 impl<'s> Drop for SurfaceRenderContext3<'s> { fn drop(&mut self) { unsafe { (*(self.0).0).EndDraw().checked().unwrap() }; } }
 
+#[repr(transparent)]
 pub struct EffectFactory(*mut IDCompositionDevice3); HandleWrapper!(for EffectFactory[IDCompositionDevice3] + FromRawHandle);
 impl Device
 {
@@ -358,6 +367,7 @@ impl Device
 }
 
 /// Gaussian Blur Effect
+#[repr(transparent)]
 pub struct GaussianBlurEffect(*mut IDCompositionGaussianBlurEffect); HandleWrapper!(for GaussianBlurEffect[IDCompositionGaussianBlurEffect]);
 impl Effect for GaussianBlurEffect { fn as_raw_effect(&self) -> *const IDCompositionEffect { self.0 as _ } }
 impl EffectFactory

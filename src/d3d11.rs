@@ -12,13 +12,16 @@ use std::mem::size_of;
 pub use winapi::um::d3d11::D3D11_VIEWPORT as Viewport;
 pub use winapi::um::d3dcommon::D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP as TriangleStripTopo;
 
-pub type GenericResult<T> = std::result::Result<T, Box<std::error::Error>>;
+pub type GenericResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 /// Driver object for ID3D11Device
+#[repr(transparent)]
 pub struct Device(*mut ID3D11Device); HandleWrapper!(for Device[ID3D11Device] + FromRawHandle);
 /// Driver object for ID3D11DeviceContext for Immediate Submission
+#[repr(transparent)]
 pub struct ImmediateContext(*mut ID3D11DeviceContext); HandleWrapper!(for ImmediateContext[ID3D11DeviceContext] + FromRawHandle);
 /// Driver object for ID3D11DeviceContext for Deferred Submission
+#[repr(transparent)]
 pub struct DeferredContext(*mut ID3D11DeviceContext); HandleWrapper!(for DeferredContext[ID3D11DeviceContext] + FromRawHandle);
 
 impl Device
@@ -45,6 +48,7 @@ impl ImmediateContext
 
 /// リソースのパイプラインへの束縛フラグ
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[repr(transparent)]
 pub struct BindFlags(D3D11_BIND_FLAG);
 impl BindFlags
 {
@@ -61,8 +65,10 @@ impl BindFlags
 unsafe impl MarkForSameBits<D3D11_BIND_FLAG> for BindFlags {}
 
 /// Driver object for ID3D11Texture2D
+#[repr(transparent)]
 pub struct Texture2D(*mut ID3D11Texture2D); HandleWrapper!(for Texture2D[ID3D11Texture2D] + FromRawHandle);
 impl dxgi::SurfaceChild for Texture2D { fn base(&self) -> IOResult<dxgi::Surface> { self.query_interface() } }
+#[repr(transparent)]
 pub struct TextureDesc2D(D3D11_TEXTURE2D_DESC);
 impl TextureDesc2D
 {
@@ -159,6 +165,7 @@ impl Resource for Texture2D { fn as_raw_resource_ptr(&self) -> *mut ID3D11Resour
 impl Resource for Buffer { fn as_raw_resource_ptr(&self) -> *mut ID3D11Resource { self.0 as _ } }
 
 /// 入力レイアウト
+#[repr(transparent)]
 pub struct InputLayout(*mut ID3D11InputLayout); HandleWrapper!(for InputLayout[ID3D11InputLayout]);
 impl Device
 {
@@ -171,6 +178,7 @@ impl Device
     }
 }
 /// 入力エレメント
+#[repr(transparent)]
 pub struct InputElement(D3D11_INPUT_ELEMENT_DESC);
 unsafe impl MarkForSameBits<D3D11_INPUT_ELEMENT_DESC> for InputElement {}
 impl InputElement
@@ -186,6 +194,7 @@ impl InputElement
 }
 
 /// サンプラーステート
+#[repr(transparent)]
 pub struct SamplerStateBuilder(D3D11_SAMPLER_DESC);
 impl SamplerStateBuilder
 {
@@ -224,11 +233,14 @@ impl SamplerStateBuilder
     }
 }
 /// サンプラーステート
+#[repr(transparent)]
 pub struct SamplerState(*mut ID3D11SamplerState); HandleWrapper!(for SamplerState[ID3D11SamplerState]);
 
 /// 頂点シェーダ
+#[repr(transparent)]
 pub struct VertexShader(*mut ID3D11VertexShader); HandleWrapper!(for VertexShader[ID3D11VertexShader]);
 /// ピクセルシェーダ
+#[repr(transparent)]
 pub struct PixelShader(*mut ID3D11PixelShader); HandleWrapper!(for PixelShader[ID3D11PixelShader]);
 impl Device
 {
@@ -269,6 +281,7 @@ impl ViewDescriptable<D3D11_RENDER_TARGET_VIEW_DESC> for Texture2D
 }
 
 /// レンダーターゲットビュー
+#[repr(transparent)]
 pub struct RenderTargetView(*mut ID3D11RenderTargetView); HandleWrapper!(for RenderTargetView[ID3D11RenderTargetView]);
 impl Device
 {
@@ -284,8 +297,10 @@ impl Device
     }
 }
 /// 深度ステンシルビュー(未完成)
+#[repr(transparent)]
 pub struct DepthStencilView(*mut ID3D11DepthStencilView); HandleWrapper!(for DepthStencilView[ID3D11DepthStencilView]);
 /// シェーダリソースビュー
+#[repr(transparent)]
 pub struct ShaderResourceView(*mut ID3D11ShaderResourceView); HandleWrapper!(for ShaderResourceView[ID3D11ShaderResourceView]);
 impl Device
 {
@@ -370,7 +385,7 @@ impl ImmediateContext
     pub fn set_vertex_buffers(&self, buffers: &[&Buffer]) -> &Self
     {
         let (bptr, strides): (Vec<_>, Vec<_>) = buffers.iter().map(|&&Buffer(p, s)| (p, s as u32)).unzip();
-        let offsets = ReturnIterator::new(0).cycle().take(buffers.len()).collect::<Vec<_>>();
+        let offsets = std::iter::repeat(0).take(buffers.len()).collect::<Vec<_>>();
         unsafe { (*self.0).IASetVertexBuffers(0, bptr.len() as _, bptr.as_ptr(), strides.as_ptr(), offsets.as_ptr()) };
         self
     }
@@ -399,13 +414,11 @@ pub use winapi::um::d3d11::{
 
 /// マップ済みリソース
 pub struct MappedResource<'c, 'r, R: Resource + 'r>(&'c ImmediateContext, &'r R, D3D11_MAPPED_SUBRESOURCE);
-impl ImmediateContext
-{
+impl ImmediateContext {
     /// リソースをシステムメモリにマップ
-    pub fn map<'c, 'r, R: Resource + 'r>(&'c self, res: &'r R, rwmode: D3D11_MAP) -> IOResult<MappedResource<'c, 'r, R>>
-    {
-        let mut mp = unsafe { std::mem::uninitialized() };
-        unsafe { (*self.0).Map(res.as_raw_resource_ptr(), 0, rwmode, 0, &mut mp) }.to_result_with(|| MappedResource(self, res, mp))
+    pub fn map<'c, 'r, R: Resource + 'r>(&'c self, res: &'r R, rwmode: D3D11_MAP) -> IOResult<MappedResource<'c, 'r, R>> {
+        let mut mp = std::mem::MaybeUninit::uninit();
+        unsafe { (*self.0).Map(res.as_raw_resource_ptr(), 0, rwmode, 0, mp.as_mut_ptr()) }.to_result_with(|| MappedResource(self, res, unsafe { mp.assume_init() }))
     }
 }
 impl<'c, 'r, R: Resource + 'r> Drop for MappedResource<'c, 'r, R>
@@ -422,20 +435,4 @@ impl<'c, 'r, R: Resource + 'r> MappedResource<'c, 'r, R>
     pub fn data_ptr_mut(&self) -> *mut c_void { self.2.pData }
     pub fn row_pitch(&self) -> usize { self.2.RowPitch as _ }
     pub fn depth_pitch(&self) -> usize { self.2.DepthPitch as _ }
-}
-
-/// Iterator Support
-pub struct ReturnIterator<T>(Option<T>);
-impl<T: Clone> Clone for ReturnIterator<T>
-{
-    fn clone(&self) -> Self { ReturnIterator(self.0.clone()) }
-}
-impl<T> std::iter::Iterator for ReturnIterator<T>
-{
-    type Item = T;
-    fn next(&mut self) -> Option<T> { self.0.take() }
-}
-impl<T> ReturnIterator<T>
-{
-    fn new(v: T) -> Self { ReturnIterator(Some(v)) }
 }
