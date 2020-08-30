@@ -78,4 +78,12 @@ impl FormatConverter
         let (mut w, mut h) = (0, 0);
         unsafe { (*self.0).GetSize(&mut w, &mut h) }.to_result_with(|| Size2U(w, h))
     }
+
+    pub fn copy_pixels(&self, rect: Option<&WICRect>, target: &mut [u8], stride: usize) -> IOResult<()> {
+        unsafe {
+            (*self.0).CopyPixels(
+                rect.map_or(std::ptr::null(), |p| p as *const _), stride as _, target.len() as _, target.as_mut_ptr()
+            ).checked()
+        }
+    }
 }
