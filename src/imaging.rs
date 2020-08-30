@@ -2,10 +2,8 @@
 
 use winapi::um::wincodec::*;
 use winapi::um::winnt::GENERIC_READ;
-use winapi::um::unknwnbase::LPUNKNOWN;
-use winapi::shared::guiddef::{REFIID, REFCLSID, REFGUID};
+use winapi::shared::guiddef::REFGUID;
 use winapi::shared::wtypesbase::CLSCTX_INPROC_SERVER;
-use winapi::shared::minwindef::{DWORD, LPVOID};
 use super::*;
 use metrics::*;
 
@@ -80,10 +78,4 @@ impl FormatConverter
         let (mut w, mut h) = (0, 0);
         unsafe { (*self.0).GetSize(&mut w, &mut h) }.to_result_with(|| Size2U(w, h))
     }
-}
-
-#[link(name = "ole32")]
-extern "system"
-{
-    pub(crate) fn CoCreateInstance(rclsid: REFCLSID, pUnkOuter: LPUNKNOWN, dwClsContext: DWORD, riid: REFIID, ppv: *mut LPVOID) -> HRESULT;
 }

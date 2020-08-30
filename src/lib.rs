@@ -6,6 +6,9 @@ use winapi::shared::windef::HWND;
 use winapi::shared::winerror::{HRESULT, SUCCEEDED};
 use winapi::um::unknwnbase::IUnknown;
 use winapi::Interface;
+use winapi::um::unknwnbase::LPUNKNOWN;
+use winapi::shared::guiddef::{REFIID, REFCLSID};
+use winapi::shared::minwindef::{DWORD, LPVOID};
 
 pub trait ResultCarrier
 {
@@ -122,7 +125,13 @@ pub(crate) fn co_create_inproc_instance<I: Interface>(clsid: &GUID) -> IOResult<
     let mut p = std::ptr::null_mut();
     unsafe
     {
-        imaging::CoCreateInstance(clsid, std::ptr::null_mut(),
+        CoCreateInstance(clsid, std::ptr::null_mut(),
             CLSCTX_INPROC_SERVER, &I::uuidof(), &mut p).to_result(p as _)
     }
+}
+
+#[link(name = "ole32")]
+extern "system"
+{
+    pub(crate) fn CoCreateInstance(rclsid: REFCLSID, pUnkOuter: LPUNKNOWN, dwClsContext: DWORD, riid: REFIID, ppv: *mut LPVOID) -> HRESULT;
 }
