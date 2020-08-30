@@ -201,6 +201,8 @@ pub struct HostDescriptorHandle(D3D12_CPU_DESCRIPTOR_HANDLE, usize);
 pub struct DeviceDescriptorHandle(D3D12_GPU_DESCRIPTOR_HANDLE, usize);
 impl Borrow<D3D12_CPU_DESCRIPTOR_HANDLE> for HostDescriptorHandle { fn borrow(&self) -> &D3D12_CPU_DESCRIPTOR_HANDLE { &self.0 } }
 impl Borrow<D3D12_GPU_DESCRIPTOR_HANDLE> for DeviceDescriptorHandle { fn borrow(&self) -> &D3D12_GPU_DESCRIPTOR_HANDLE { &self.0 } }
+impl From<HostDescriptorHandle> for D3D12_CPU_DESCRIPTOR_HANDLE { fn from(v: HostDescriptorHandle) -> Self { v.0 } }
+impl From<DeviceDescriptorHandle> for D3D12_GPU_DESCRIPTOR_HANDLE { fn from(v: DeviceDescriptorHandle) -> Self { v.0 } }
 impl HostDescriptorHandle
 {
     /// count番目を参照
