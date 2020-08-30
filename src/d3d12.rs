@@ -821,6 +821,11 @@ impl GraphicsCommandList
         unsafe { (*self.0).CopyBufferRegion(dst.0, range.start as _, src.0, range.start as _, (range.end - range.start) as _) };
         self
     }
+    /// テクスチャの一部をコピーする
+    pub fn copy_texture_region(&self, src: &D3D12_TEXTURE_COPY_LOCATION, src_box: Option<&D3D12_BOX>, dst: &D3D12_TEXTURE_COPY_LOCATION, dst_x: u32, dst_y: u32, dst_z: u32) -> &Self {
+        unsafe { (*self.0).CopyTextureRegion(dst, dst_x, dst_y, dst_z, src, src_box.map_or(std::ptr::null(), |p| p as _)); }
+        self
+    }
     /// レンダーターゲットをクリア
     pub fn clear_render_target_view(&self, target: D3D12_CPU_DESCRIPTOR_HANDLE, color: &[f32; 4]) -> &Self
     {
@@ -1105,6 +1110,35 @@ impl Viewport
     {
         Viewport { left: self.left + amount, top: self.top + amount, width: self.width - amount, height: self.height - amount, .. *self }
     }
+}
+
+/// D3D12_TEXTURE_COPY_LOCATION constructor補助
+#[repr(transparent)]
+pub struct TextureCopyLocation(D3D12_TEXTURE_COPY_LOCATION);
+impl TextureCopyLocation {
+    pub fn with_placed_footprint<R: AsRawHandle<ID3D12Resource> + ?Sized>(resource: &R, footprint: D3D12_PLACED_SUBRESOURCE_FOOTPRINT) -> Self {
+        let mut u = std::mem::MaybeUninit::<D3D12_TEXTURE_COPY_LOCATION_u>::uninit();
+        unsafe { *(*u.as_mut_ptr()).PlacedFootprint_mut() = footprint; }
+        TextureCopyLocation(D3D12_TEXTURE_COPY_LOCATION {
+            pResource: resource.as_raw_handle(),
+            Type: D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
+            u: unsafe { u.assume_init() }
+        })
+    }
+    pub fn with_subresource_index<R: AsRawHandle<ID3D12Resource> + ?Sized>(resource: &R, subresource_index: u32) -> Self {
+        let mut u = std::mem::MaybeUninit::<D3D12_TEXTURE_COPY_LOCATION_u>::uninit();
+        unsafe { *(*u.as_mut_ptr()).SubresourceIndex_mut() = subresource_index; }
+        TextureCopyLocation(D3D12_TEXTURE_COPY_LOCATION {
+            pResource: resource.as_raw_handle(),
+            Type: D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
+            u: unsafe { u.assume_init() }
+        })
+    }
+}
+impl From<TextureCopyLocation> for D3D12_TEXTURE_COPY_LOCATION { fn from(v: TextureCopyLocation) -> Self { v.0 } }
+impl std::ops::Deref for TextureCopyLocation {
+    type Target = D3D12_TEXTURE_COPY_LOCATION;
+    fn deref(&self) -> &Self::Target { &self.0 }
 }
 
 #[link(name = "d3d12")]
