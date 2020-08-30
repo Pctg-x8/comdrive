@@ -8,7 +8,7 @@ use super::*;
 use metrics::*;
 
 // common pixel format guids //
-pub use winapi::um::wincodec::GUID_WICPixelFormat32bppPBGRA;
+pub use winapi::um::wincodec::{GUID_WICPixelFormat32bppPBGRA, GUID_WICPixelFormat32bppPRGBA};
 
 /// Driver object for IWICImagingFactory
 #[repr(transparent)]
