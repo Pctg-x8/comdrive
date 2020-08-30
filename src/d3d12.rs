@@ -389,6 +389,16 @@ impl Device
 }
 impl Heap
 {
+    /// リソースを配置newする
+    pub fn place_resource(&self, range: std::ops::Range<usize>, resource: &D3D12_RESOURCE_DESC, initial_state: ResourceState) -> IOResult<Resource> {
+        let mut handle = std::ptr::null_mut();
+        unsafe {
+            (*self.1).CreatePlacedResource(
+                self.0, range.start as _, resource, initial_state as _,
+                std::ptr::null(), &ID3D12Resource::uuidof(), &mut handle
+            ).to_result_with(|| Resource(handle as _))
+        }
+    }
     /// バッファを配置newする
     pub fn place_buffer(&self, range: std::ops::Range<usize>, initial_state: ResourceState) -> IOResult<Resource>
     {
@@ -399,11 +409,8 @@ impl Heap
             SampleDesc: DXGI_SAMPLE_DESC { Count: 1, Quality: 0 }, Layout: D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
             Flags: 0
         };
-        let mut handle = std::ptr::null_mut();
-        unsafe
-        {
-            (*self.1).CreatePlacedResource(self.0, range.start as _, &desc, initial_state as _, std::ptr::null(), &ID3D12Resource::uuidof(), &mut handle).to_result_with(|| Resource(handle as _))
-        }
+        
+        self.place_resource(range, &desc, initial_state)
     }
 }
 
