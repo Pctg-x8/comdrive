@@ -376,12 +376,12 @@ pub struct Heap(*mut ID3D12Heap, *mut ID3D12Device); HandleWrapper!(for Heap[ID3
 impl Device
 {
     /// ヒープの作成
-    pub fn new_heap(&self, property: &HeapProperty, size: usize, for_textures: bool) -> IOResult<Heap>
+    pub fn new_heap(&self, property: &HeapProperty, size: usize, flags: D3D12_HEAP_FLAGS) -> IOResult<Heap>
     {
         let desc = D3D12_HEAP_DESC
         {
             SizeInBytes: size as _, Properties: property.0, Alignment: D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT as _,
-            Flags: if for_textures { D3D12_HEAP_FLAG_DENY_BUFFERS } else { D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS }
+            Flags: flags
         };
         let mut handle = std::ptr::null_mut();
         unsafe { (*self.0).CreateHeap(&desc, &ID3D12Heap::uuidof(), &mut handle).to_result_with(|| Heap(handle as _, self.0)) }
