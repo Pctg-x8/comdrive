@@ -93,6 +93,58 @@ impl Device
     {
         unsafe { (*self.0).CreateShaderResourceView(res.0, desc.map(|x| x as _).unwrap_or(std::ptr::null()), handle) };
     }
+
+    /// リソースのコピーに関する情報を入手
+    /// (CopyableFootprintのIterator, TotalBytes)の順で帰る
+    pub fn get_copyable_footprints(
+        &self,
+        rd: &D3D12_RESOURCE_DESC, subresource_range: std::ops::Range<u32>,
+        base_offset: u64
+    ) -> (CopyableFootprintsIterator, u64) {
+        let subresource_count = subresource_range.len();
+        let mut layouts = Vec::with_capacity(subresource_count); unsafe { layouts.set_len(subresource_count); }
+        let mut row_counts = Vec::with_capacity(subresource_count); unsafe { row_counts.set_len(subresource_count); }
+        let mut row_sizes = Vec::with_capacity(subresource_count); unsafe { row_sizes.set_len(subresource_count); }
+        let mut total_bytes: u64 = 0;
+        
+        unsafe {
+            (*self.0).GetCopyableFootprints(
+                rd, subresource_range.start, subresource_count as _, base_offset,
+                layouts.as_mut_ptr(), row_counts.as_mut_ptr(), row_sizes.as_mut_ptr(), &mut total_bytes
+            );
+        }
+        (CopyableFootprintsIterator(layouts.into_iter().zip(row_counts.into_iter()).zip(row_sizes.into_iter())), total_bytes)
+    }
+}
+
+/// リソースのコピーに関する情報
+pub struct CopyableFootprint {
+    pub placed_footprint: D3D12_PLACED_SUBRESOURCE_FOOTPRINT,
+    pub row_count: u32,
+    pub row_size_in_bytes: u64
+}
+/// リソースのコピーに関する情報を整理して取り出すためのもの
+pub struct CopyableFootprintsIterator(
+    std::iter::Zip<
+        std::iter::Zip<
+            std::vec::IntoIter<D3D12_PLACED_SUBRESOURCE_FOOTPRINT>,
+            std::vec::IntoIter<u32>
+        >,
+        std::vec::IntoIter<u64>
+    >
+);
+impl Iterator for CopyableFootprintsIterator {
+    type Item = CopyableFootprint;
+
+    fn next(&mut self) -> Option<CopyableFootprint> {
+        let ((f, rc), rs) = self.0.next()?;
+
+        Some(CopyableFootprint {
+            placed_footprint: f,
+            row_count: rc,
+            row_size_in_bytes: rs
+        })
+    }
 }
 
 /// コマンドバッファ/キューのタイプ
