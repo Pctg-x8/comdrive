@@ -13,7 +13,6 @@ use winapi::shared::ntdef::HANDLE;
 use std::path::Path;
 use std::ops::Deref;
 use metrics::*;
-use std::borrow::Borrow;
 use std::mem::size_of;
 
 pub use winapi::um::d3d12::{
@@ -251,8 +250,8 @@ pub struct HostDescriptorHandle(D3D12_CPU_DESCRIPTOR_HANDLE, usize);
 /// デスクリプタハンドル(GPU)
 #[derive(Clone)]
 pub struct DeviceDescriptorHandle(D3D12_GPU_DESCRIPTOR_HANDLE, usize);
-impl Borrow<D3D12_CPU_DESCRIPTOR_HANDLE> for HostDescriptorHandle { fn borrow(&self) -> &D3D12_CPU_DESCRIPTOR_HANDLE { &self.0 } }
-impl Borrow<D3D12_GPU_DESCRIPTOR_HANDLE> for DeviceDescriptorHandle { fn borrow(&self) -> &D3D12_GPU_DESCRIPTOR_HANDLE { &self.0 } }
+impl AsRef<D3D12_CPU_DESCRIPTOR_HANDLE> for HostDescriptorHandle { fn as_ref(&self) -> &D3D12_CPU_DESCRIPTOR_HANDLE { &self.0 } }
+impl AsRef<D3D12_GPU_DESCRIPTOR_HANDLE> for DeviceDescriptorHandle { fn as_ref(&self) -> &D3D12_GPU_DESCRIPTOR_HANDLE { &self.0 } }
 impl From<HostDescriptorHandle> for D3D12_CPU_DESCRIPTOR_HANDLE { fn from(v: HostDescriptorHandle) -> Self { v.0 } }
 impl From<DeviceDescriptorHandle> for D3D12_GPU_DESCRIPTOR_HANDLE { fn from(v: DeviceDescriptorHandle) -> Self { v.0 } }
 impl HostDescriptorHandle
@@ -285,7 +284,7 @@ impl ResourceFlag
 #[repr(transparent)]
 pub struct ResourceDesc(D3D12_RESOURCE_DESC);
 unsafe impl MarkForSameBits<D3D12_RESOURCE_DESC> for ResourceDesc {}
-impl Borrow<D3D12_RESOURCE_DESC> for ResourceDesc { fn borrow(&self) -> &D3D12_RESOURCE_DESC { &self.0 } }
+impl AsRef<D3D12_RESOURCE_DESC> for ResourceDesc { fn as_ref(&self) -> &D3D12_RESOURCE_DESC { &self.0 } }
 impl ResourceDesc
 {
     /// バッファ
@@ -362,7 +361,7 @@ impl Device
         let mut handle = std::ptr::null_mut();
         unsafe
         {
-            (*self.0).CreateCommittedResource(heap_props.borrow(), D3D12_HEAP_FLAG_NONE, desc.borrow(), initial_state as _,
+            (*self.0).CreateCommittedResource(heap_props.as_ref(), D3D12_HEAP_FLAG_NONE, desc.as_ref(), initial_state as _,
                 opt_cv.as_ref().map(|x| x as *const _).unwrap_or(std::ptr::null()), &ID3D12Resource::uuidof(), &mut handle)
         }.to_result_with(|| Resource(handle as _))
     }
@@ -401,7 +400,7 @@ impl Resource
 #[repr(transparent)]
 pub struct HeapProperty(D3D12_HEAP_PROPERTIES);
 unsafe impl MarkForSameBits<D3D12_HEAP_PROPERTIES> for HeapProperty {}
-impl Borrow<D3D12_HEAP_PROPERTIES> for HeapProperty { fn borrow(&self) -> &D3D12_HEAP_PROPERTIES { &self.0 } }
+impl AsRef<D3D12_HEAP_PROPERTIES> for HeapProperty { fn as_ref(&self) -> &D3D12_HEAP_PROPERTIES { &self.0 } }
 impl HeapProperty
 {
     /// デフォルトヒープ(CPUアクセスなし)
@@ -492,7 +491,7 @@ impl MappingRange for Option<Range> { fn into_range_object(self) -> Option<Range
 #[repr(transparent)]
 pub struct RootParameter(D3D12_ROOT_PARAMETER);
 unsafe impl MarkForSameBits<D3D12_ROOT_PARAMETER> for RootParameter {}
-impl Borrow<D3D12_ROOT_PARAMETER> for RootParameter { fn borrow(&self) -> &D3D12_ROOT_PARAMETER { &self.0 } }
+impl AsRef<D3D12_ROOT_PARAMETER> for RootParameter { fn as_ref(&self) -> &D3D12_ROOT_PARAMETER { &self.0 } }
 impl RootParameter
 {
     /// 定数パラメータ
@@ -555,7 +554,7 @@ impl RootParameter
 #[repr(transparent)]
 pub struct StaticSampler(D3D12_STATIC_SAMPLER_DESC);
 unsafe impl MarkForSameBits<D3D12_STATIC_SAMPLER_DESC> for StaticSampler {}
-impl Borrow<D3D12_STATIC_SAMPLER_DESC> for StaticSampler { fn borrow(&self) -> &D3D12_STATIC_SAMPLER_DESC { &self.0 } }
+impl AsRef<D3D12_STATIC_SAMPLER_DESC> for StaticSampler { fn as_ref(&self) -> &D3D12_STATIC_SAMPLER_DESC { &self.0 } }
 impl StaticSampler
 {
     /// 線形補間, 切り落とし
@@ -700,28 +699,28 @@ impl<'d> PipelineStateTracker<'d>
         self.1.PrimitiveTopologyType = _type; self
     }
     /// 頂点処理(シェーダと入力フォーマット)の設定
-    pub fn set_vertex_processing<Shader: Borrow<D3D12_SHADER_BYTECODE>>
+    pub fn set_vertex_processing<Shader: AsRef<D3D12_SHADER_BYTECODE>>
         (&mut self, shader: &Shader, input_format: &[D3D12_INPUT_ELEMENT_DESC]) -> &mut Self
     {
-        self.1.VS = *shader.borrow();
+        self.1.VS = *shader.as_ref();
         self.1.InputLayout = D3D12_INPUT_LAYOUT_DESC { pInputElementDescs: input_format.as_ptr(), NumElements: input_format.len() as _ };
         self
     }
     /// テッセレーション処理の設定
-    pub fn set_tessellation_processing<HShader: Borrow<D3D12_SHADER_BYTECODE>, DShader: Borrow<D3D12_SHADER_BYTECODE>>
+    pub fn set_tessellation_processing<HShader: AsRef<D3D12_SHADER_BYTECODE>, DShader: AsRef<D3D12_SHADER_BYTECODE>>
         (&mut self, hull: &HShader, domain: &DShader) -> &mut Self
     {
-        self.1.HS = *hull.borrow(); self.1.DS = *domain.borrow(); self
+        self.1.HS = *hull.as_ref(); self.1.DS = *domain.as_ref(); self
     }
     /// ジオメトリシェーダの設定
-    pub fn set_geometry_shader<Shader: Borrow<D3D12_SHADER_BYTECODE>>(&mut self, shader: &Shader) -> &mut Self
+    pub fn set_geometry_shader<Shader: AsRef<D3D12_SHADER_BYTECODE>>(&mut self, shader: &Shader) -> &mut Self
     {
-        self.1.GS = *shader.borrow(); self
+        self.1.GS = *shader.as_ref(); self
     }
     /// ピクセルシェーダの設定
-    pub fn set_pixel_shader<Shader: Borrow<D3D12_SHADER_BYTECODE>>(&mut self, shader: &Shader) -> &mut Self
+    pub fn set_pixel_shader<Shader: AsRef<D3D12_SHADER_BYTECODE>>(&mut self, shader: &Shader) -> &mut Self
     {
-        self.1.PS = *shader.borrow(); self
+        self.1.PS = *shader.as_ref(); self
     }
     /// 統一ブレンドステートの設定
     pub fn set_blend_state_common<RTBlend: AsRef<D3D12_RENDER_TARGET_BLEND_DESC>>
@@ -788,13 +787,12 @@ impl ShaderBinary
         })
     }
 }
-impl Borrow<D3D12_SHADER_BYTECODE> for ShaderBinary { fn borrow(&self) -> &D3D12_SHADER_BYTECODE { &self.1 } }
+impl AsRef<D3D12_SHADER_BYTECODE> for ShaderBinary { fn as_ref(&self) -> &D3D12_SHADER_BYTECODE { &self.1 } }
 impl Deref for ShaderBinary { type Target = [u8]; fn deref(&self) -> &[u8] { &self.0 } }
 /// ブレンディング
 #[repr(transparent)]
 pub struct Blending(D3D12_RENDER_TARGET_BLEND_DESC);
 unsafe impl MarkForSameBits<D3D12_RENDER_TARGET_BLEND_DESC> for Blending {}
-impl Borrow<D3D12_RENDER_TARGET_BLEND_DESC> for Blending { fn borrow(&self) -> &D3D12_RENDER_TARGET_BLEND_DESC { &self.0 } }
 impl AsRef<D3D12_RENDER_TARGET_BLEND_DESC> for Blending { fn as_ref(&self) -> &D3D12_RENDER_TARGET_BLEND_DESC { &self.0 } }
 impl Blending
 {
@@ -1086,7 +1084,7 @@ impl RootConstant for u32 { fn passing_form(self) -> u32 { self } }
 #[repr(transparent)]
 pub struct ResourceBarrier(D3D12_RESOURCE_BARRIER);
 unsafe impl MarkForSameBits<D3D12_RESOURCE_BARRIER> for ResourceBarrier {}
-impl Borrow<D3D12_RESOURCE_BARRIER> for ResourceBarrier { fn borrow(&self) -> &D3D12_RESOURCE_BARRIER { &self.0 } }
+impl AsRef<D3D12_RESOURCE_BARRIER> for ResourceBarrier { fn as_ref(&self) -> &D3D12_RESOURCE_BARRIER { &self.0 } }
 impl ResourceBarrier
 {
     /// エイリアシング(リソースの有効化)
@@ -1153,9 +1151,9 @@ pub struct Viewport
     pub min_depth: f32, pub max_depth: f32
 }
 unsafe impl MarkForSameBits<D3D12_VIEWPORT> for Viewport {}
-impl Borrow<D3D12_VIEWPORT> for Viewport
+impl AsRef<D3D12_VIEWPORT> for Viewport
 {
-    fn borrow(&self) -> &D3D12_VIEWPORT { unsafe { std::mem::transmute(self) } }
+    fn as_ref(&self) -> &D3D12_VIEWPORT { unsafe { std::mem::transmute(self) } }
 }
 impl Default for Viewport
 {
