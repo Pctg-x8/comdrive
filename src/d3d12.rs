@@ -782,6 +782,7 @@ impl Deref for ShaderBinary { type Target = [u8]; fn deref(&self) -> &[u8] { &se
 pub struct Blending(D3D12_RENDER_TARGET_BLEND_DESC);
 unsafe impl MarkForSameBits<D3D12_RENDER_TARGET_BLEND_DESC> for Blending {}
 impl Borrow<D3D12_RENDER_TARGET_BLEND_DESC> for Blending { fn borrow(&self) -> &D3D12_RENDER_TARGET_BLEND_DESC { &self.0 } }
+impl AsRef<D3D12_RENDER_TARGET_BLEND_DESC> for Blending { fn as_ref(&self) -> &D3D12_RENDER_TARGET_BLEND_DESC { &self.0 } }
 impl Blending
 {
     /// 無効
