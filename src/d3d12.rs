@@ -540,7 +540,9 @@ impl RootParameter
     /// Descriptor Tableから
     pub fn from_descriptor_table(visibility: D3D12_SHADER_VISIBILITY, descriptor_ranges: &[D3D12_DESCRIPTOR_RANGE]) -> Self {
         RootParameter(D3D12_ROOT_PARAMETER {
-            ParameterType: D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE, ShaderVisibility: visibility, u: unsafe {
+            ParameterType: D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+            ShaderVisibility: visibility,
+            u: unsafe {
                 *std::mem::transmute::<_, &_>(&D3D12_ROOT_DESCRIPTOR_TABLE {
                     NumDescriptorRanges: descriptor_ranges.len() as _,
                     pDescriptorRanges: descriptor_ranges.as_ptr()
