@@ -1207,6 +1207,20 @@ impl std::ops::Deref for TextureCopyLocation {
     fn deref(&self) -> &Self::Target { &self.0 }
 }
 
+pub trait DeviceFeature {
+    const FEATURE_TYPE: D3D12_FEATURE;
+}
+impl Device {
+    pub fn check_feature_support<F: DeviceFeature>(&self, feature: &mut F) -> IOResult<()> {
+        unsafe {
+            (*self.0).CheckFeatureSupport(F::FEATURE_TYPE, feature as *mut _ as _, std::mem::size_of::<F>() as _)
+        }.checked()
+    }
+}
+impl DeviceFeature for D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS {
+    const FEATURE_TYPE: D3D12_FEATURE = D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS;
+}
+
 #[link(name = "d3d12")]
 extern "system"
 {
