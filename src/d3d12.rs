@@ -882,9 +882,9 @@ impl GraphicsCommandList
         self
     }
     /// バッファの一部をコピーする
-    pub fn copy_buffer_region(&self, src: &Resource, range: std::ops::Range<usize>, dst: &Resource) -> &Self
+    pub fn copy_buffer_region(&self, src: &Resource, range: std::ops::Range<usize>, dst: &Resource, dst_offset: usize) -> &Self
     {
-        unsafe { (*self.0).CopyBufferRegion(dst.0, range.start as _, src.0, range.start as _, (range.end - range.start) as _) };
+        unsafe { (*self.0).CopyBufferRegion(dst.0, dst_offset as _, src.0, range.start as _, (range.end - range.start) as _) };
         self
     }
     /// テクスチャの一部をコピーする
