@@ -51,6 +51,10 @@ impl BitmapDecoder
 /// Driver object for IWICBitmapFrameDecode
 #[repr(transparent)]
 pub struct BitmapFrameDecode(*mut IWICBitmapFrameDecode); HandleWrapper!(for BitmapFrameDecode[IWICBitmapFrameDecode] + FromRawHandle);
+impl std::ops::Deref for BitmapFrameDecode {
+    type Target = BitmapSource;
+    fn deref(&self) -> &Self::Target { unsafe { std::mem::transmute(self) } }
+}
 
 /// Driver object for IWICFormatConverter
 #[repr(transparent)]
@@ -72,13 +76,21 @@ impl FormatConverter
         unsafe { (*self.0).Initialize(src.0 as _, target_format, WICBitmapDitherTypeNone,
             std::ptr::null(), 0.0, WICBitmapPaletteTypeMedianCut) }.checked()
     }
-    /// Size of bitmap
-    pub fn size(&self) -> IOResult<Size2U>
-    {
-        let (mut w, mut h) = (0, 0);
-        unsafe { (*self.0).GetSize(&mut w, &mut h) }.to_result_with(|| Size2U(w, h))
-    }
+}
+impl std::ops::Deref for FormatConverter {
+    type Target = BitmapSource;
+    fn deref(&self) -> &Self::Target { unsafe { std::mem::transmute(self) } }
+}
 
+#[repr(transparent)]
+pub struct BitmapSource(*mut IWICBitmapSource); HandleWrapper!(for BitmapSource[IWICBitmapSource] + FromRawHandle);
+impl BitmapSource {
+    /// Size of bitmap
+    pub fn size(&self) -> IOResult<Size2U> {
+        let (mut w, mut h) = (0, 0);
+        unsafe { (*self.0).GetSize(&mut w, &mut h).to_result_with(|| Size2U(w, h)) }
+    }
+    
     pub fn copy_pixels(&self, rect: Option<&WICRect>, target: &mut [u8], stride: usize) -> IOResult<()> {
         unsafe {
             (*self.0).CopyPixels(
