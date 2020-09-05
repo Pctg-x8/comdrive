@@ -923,6 +923,10 @@ impl GraphicsCommandList
     {
         unsafe { (*self.0).SetGraphicsRootConstantBufferView(param_index, resource_ptr) }; self
     }
+    /// ルートリソースバッファの設定
+    pub fn set_root_resource_buffer(&self, param_index: u32, resource_ptr: D3D12_GPU_VIRTUAL_ADDRESS) -> &Self {
+        unsafe { (*self.0).SetGraphicsRootShaderResourceView(param_index, resource_ptr); } self
+    }
     /// 参照されるデスクリプタヒープの設定
     pub fn set_descriptor_heaps(&self, heaps: &[*mut ID3D12DescriptorHeap]) -> &Self
     {
