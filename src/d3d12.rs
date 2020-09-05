@@ -443,17 +443,17 @@ impl Device
 impl Heap
 {
     /// リソースを配置newする
-    pub fn place_resource(&self, offset: usize, resource: &D3D12_RESOURCE_DESC, initial_state: ResourceState) -> IOResult<Resource> {
+    pub fn place_resource(&self, offset: usize, resource: &D3D12_RESOURCE_DESC, initial_state: D3D12_RESOURCE_STATES) -> IOResult<Resource> {
         let mut handle = std::ptr::null_mut();
         unsafe {
             (*self.1).CreatePlacedResource(
-                self.0, offset as _, resource, initial_state as _,
+                self.0, offset as _, resource, initial_state,
                 std::ptr::null(), &ID3D12Resource::uuidof(), &mut handle
             ).to_result_with(|| Resource(handle as _))
         }
     }
     /// バッファを配置newする
-    pub fn place_buffer(&self, range: std::ops::Range<usize>, initial_state: ResourceState) -> IOResult<Resource>
+    pub fn place_buffer(&self, range: std::ops::Range<usize>, initial_state: D3D12_RESOURCE_STATES) -> IOResult<Resource>
     {
         let desc = D3D12_RESOURCE_DESC
         {
@@ -1102,7 +1102,7 @@ impl ResourceBarrier
         })
     }
     /// トランジション(リソースの状態を変える)
-    pub fn transition(target: &Resource, before: ResourceState, after: ResourceState) -> Self
+    pub fn transition(target: &Resource, before: D3D12_RESOURCE_STATES, after: D3D12_RESOURCE_STATES) -> Self
     {
         ResourceBarrier(D3D12_RESOURCE_BARRIER
         {
@@ -1111,7 +1111,7 @@ impl ResourceBarrier
                 *std::mem::transmute::<_, &_>(&D3D12_RESOURCE_TRANSITION_BARRIER
                 {
                     pResource: target.0, Subresource: 0,
-                    StateBefore: before as _, StateAfter: after as _
+                    StateBefore: before, StateAfter: after
                 })
             }
         })
