@@ -48,7 +48,7 @@ macro_rules! AutoRemover {
                 if let Some(p) = unsafe { self.0.as_mut() } {
                     let _rc = unsafe { p.Release() };
                     #[cfg(feature = "trace_releasing")]
-                    trace!(target: "trace_releasing", "Dropping {}({}@{:x}) outstanding refcount: {}", stringify!($t), stringify!($ti), self.0 as usize, _rc);
+                    log::debug!(target: "trace_releasing", "Dropping {}({}@{:x}) outstanding refcount: {}", stringify!($t), stringify!($ti), self.0 as usize, _rc);
                     self.0 = std::ptr::null_mut();
                 }
             }

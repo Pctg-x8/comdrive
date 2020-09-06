@@ -740,6 +740,12 @@ impl<'d> PipelineStateTracker<'d>
         self
     }
 
+    /// 線のアンチエイリアスを設定
+    pub fn set_line_antialiasing(&mut self, enabled: bool) -> &mut Self {
+        self.1.RasterizerState.AntialiasedLineEnable = enabled as _;
+        self
+    }
+
     /// スナップショットをオブジェクト化
     pub fn make_state_object(&self) -> IOResult<PipelineState>
     {
