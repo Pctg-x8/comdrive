@@ -327,13 +327,13 @@ pub struct Bitmap1(*mut ID2D1Bitmap1); HandleWrapper!(for Bitmap1[ID2D1Bitmap1] 
 impl DeviceContext
 {
     /// Create Bitmap for RenderTarget
-    pub fn new_bitmap_for_render_target(&self, src: RenderableBitmapSource, format: dxgi::Format, alpha_mode: dxgi::AlphaMode, dpi_x: f32, dpi_y: f32) -> IOResult<Bitmap1>
+    pub fn new_bitmap_for_render_target(&self, src: RenderableBitmapSource, format: dxgi::Format, alpha_mode: dxgi::AlphaMode) -> IOResult<Bitmap1>
     {
         let mut handle = std::ptr::null_mut();
         let props = D2D1_BITMAP_PROPERTIES1
         {
             pixelFormat: D2D1_PIXEL_FORMAT { format, alphaMode: alpha_mode as _ },
-            dpiX: dpi_x, dpiY: dpi_y, colorContext: std::ptr::null_mut(),
+            dpiX: 96.0, dpiY: 96.0, colorContext: std::ptr::null_mut(),
             bitmapOptions: D2D1_BITMAP_OPTIONS_TARGET | if let RenderableBitmapSource::FromDxgiSurface(_) = src { D2D1_BITMAP_OPTIONS_CANNOT_DRAW } else { 0 }
         };
         match src
