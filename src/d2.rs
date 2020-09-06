@@ -10,7 +10,7 @@ use std::ptr::{null, null_mut};
 use metrics::*;
 use std::borrow::Borrow;
 
-pub use winapi::um::d2d1::{D2D1_COLOR_F as ColorF, D2D1_SIZE_F as SizeF, D2D1_ELLIPSE as Ellipse};
+pub use winapi::um::d2d1::{D2D1_COLOR_F as ColorF, D2D1_SIZE_F as SizeF, D2D1_ELLIPSE as Ellipse, D2D1_ROUNDED_RECT as RoundedRect};
 #[repr(C)] #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AntialiasMode
 {
@@ -161,6 +161,10 @@ pub trait RenderTarget
     {
         unsafe { shape.fill(&mut *self.as_rt_handle(), brush); } self
     }
+    /// 任意の形状 塗りつぶし+枠線オーバードロー
+    fn bordered_fill<S: Shape + ?Sized, Bf: Brush + ?Sized, Bb: Brush + ?Sized>(&self, shape: &S, brush_fill: &Bf, brush_border: &Bb, border_width: f32) -> &Self {
+        self.fill(shape, brush_fill).draw(shape, brush_border, border_width)
+    }
     /// 線を引く
     #[deprecated = "use overrided version: draw<Point2F .. Point2F>(...)"]
     fn draw_line<B: Brush + ?Sized, P1, P2>(&self, start: &P1, end: &P2, brush: &B, line_width: f32) -> &Self
@@ -258,6 +262,10 @@ impl<P: Borrow<D2D1_POINT_2F>> Shape for ::std::ops::Range<P>
         unsafe { p_rt.DrawLine(*self.start.borrow(), *self.end.borrow(), brush.as_raw_brush(), line_width, null_mut()); }
     }
     fn fill<B: Brush + ?Sized>(&self, p_rt: &mut ID2D1RenderTarget, brush: &B) { self.draw(p_rt, brush, 1.0) }
+}
+impl Shape for RoundedRect {
+    fn draw<B: Brush + ?Sized>(&self, p_rt: &mut ID2D1RenderTarget, brush: &B, line_width: f32) { unsafe { p_rt.DrawRoundedRectangle(self, brush.as_raw_brush(), line_width, null_mut()); } }
+    fn fill<B: Brush + ?Sized>(&self, p_rt: &mut ID2D1RenderTarget, brush: &B) { unsafe { p_rt.FillRoundedRectangle(self, brush.as_raw_brush()); } }
 }
 
 /// 垂線
