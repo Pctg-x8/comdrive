@@ -264,20 +264,25 @@ pub struct SurfaceFactory2(*mut IDCompositionSurfaceFactory); HandleWrapper!(for
 /// Driver object for IDCompositionSurfaceFactory for Direct3D
 #[repr(transparent)]
 pub struct SurfaceFactory3(*mut IDCompositionSurfaceFactory); HandleWrapper!(for SurfaceFactory3[IDCompositionSurfaceFactory] + FromRawHandle);
-pub trait SurfaceFactoryProvider<RenderDevice: AsIUnknown, FactoryType> : AsRawHandle<IDCompositionDesktopDevice>
-    where FactoryType: AsRawHandle<IDCompositionSurfaceFactory> + FromRawHandle<IDCompositionSurfaceFactory>
+pub trait SurfaceFactoryProvider<RenderDevice: AsIUnknown> : AsRawHandle<IDCompositionDesktopDevice>
 {
-    fn new_surface_factory(&self, render_device: &RenderDevice) -> IOResult<FactoryType>
+    type FactoryType: AsRawHandle<IDCompositionSurfaceFactory> + FromRawHandle<IDCompositionSurfaceFactory>;
+
+    fn new_surface_factory(&self, render_device: &RenderDevice) -> IOResult<Self::FactoryType>
     {
         let mut handle = std::ptr::null_mut();
         unsafe
         {
-            (*self.as_raw_handle()).CreateSurfaceFactory(render_device.as_iunknown(), &mut handle).to_result_with(|| FactoryType::from_raw_handle(handle))
+            (*self.as_raw_handle()).CreateSurfaceFactory(render_device.as_iunknown(), &mut handle).to_result_with(|| Self::FactoryType::from_raw_handle(handle))
         }
     }
 }
-impl SurfaceFactoryProvider<d2::Device, SurfaceFactory2> for Device {}
-impl SurfaceFactoryProvider<d3d11::Device, SurfaceFactory3> for Device {}
+impl SurfaceFactoryProvider<d2::Device> for Device {
+    type FactoryType = SurfaceFactory2;
+}
+impl SurfaceFactoryProvider<d3d11::Device> for Device {
+    type FactoryType = SurfaceFactory3;
+}
 /// Driver object for IDCompositionSurface for Direct2D
 #[repr(transparent)]
 pub struct Surface2(*mut IDCompositionSurface); HandleWrapper!(for Surface2[IDCompositionSurface]);
