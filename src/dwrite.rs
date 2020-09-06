@@ -165,6 +165,14 @@ impl TextLayout
     {
         (*self.0).Draw(context, callback, origin.x(), origin.y()).checked()
     }
+    /// Set underline for character range
+    pub fn set_underline(&self, has_underline: bool, range: std::ops::Range<u32>) -> IOResult<()> {
+        unsafe {
+            (*self.0).SetUnderline(
+                has_underline as _, DWRITE_TEXT_RANGE { startPosition: range.start, length: range.end - range.start }
+            ).checked()
+        }
+    }
 }
 
 /// フォントファミリー
