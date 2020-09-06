@@ -113,6 +113,8 @@ pub trait RenderTarget
     /// コンテキストハンドル
     fn as_rt_handle(&self) -> *mut ID2D1RenderTarget;
 
+    fn set_dpi(&self, x: f32, y: f32) -> &Self { unsafe { (*self.as_rt_handle()).SetDpi(x, y) }; self }
+
     /// 描画開始
     fn begin_draw(&self) -> &Self { unsafe { (*self.as_rt_handle()).BeginDraw() }; self }
     /// 描画終了
@@ -325,13 +327,13 @@ pub struct Bitmap1(*mut ID2D1Bitmap1); HandleWrapper!(for Bitmap1[ID2D1Bitmap1] 
 impl DeviceContext
 {
     /// Create Bitmap for RenderTarget
-    pub fn new_bitmap_for_render_target(&self, src: RenderableBitmapSource, format: dxgi::Format, alpha_mode: dxgi::AlphaMode) -> IOResult<Bitmap1>
+    pub fn new_bitmap_for_render_target(&self, src: RenderableBitmapSource, format: dxgi::Format, alpha_mode: dxgi::AlphaMode, dpi_x: f32, dpi_y: f32) -> IOResult<Bitmap1>
     {
         let mut handle = std::ptr::null_mut();
         let props = D2D1_BITMAP_PROPERTIES1
         {
             pixelFormat: D2D1_PIXEL_FORMAT { format, alphaMode: alpha_mode as _ },
-            dpiX: 96.0, dpiY: 96.0, colorContext: std::ptr::null_mut(),
+            dpiX: dpi_x, dpiY: dpi_y, colorContext: std::ptr::null_mut(),
             bitmapOptions: D2D1_BITMAP_OPTIONS_TARGET | if let RenderableBitmapSource::FromDxgiSurface(_) = src { D2D1_BITMAP_OPTIONS_CANNOT_DRAW } else { 0 }
         };
         match src
