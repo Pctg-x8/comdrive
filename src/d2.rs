@@ -359,6 +359,11 @@ impl DeviceContext
         let mut h = std::ptr::null_mut();
         unsafe { (*self.0).GetTarget(&mut h) }; ImageRef(h)
     }
+
+    pub fn set_primitive_blend(&self, blend: D2D1_PRIMITIVE_BLEND) -> &Self {
+        unsafe { (*self.0).SetPrimitiveBlend(blend); }
+        self
+    }
 }
 #[repr(transparent)]
 pub struct ImageRef(*mut ID2D1Image);
