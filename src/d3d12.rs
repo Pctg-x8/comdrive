@@ -466,6 +466,15 @@ impl Heap
         self.place_resource(range.start, &desc, initial_state)
     }
 }
+impl Device {
+    /// リソースを予約する
+    pub fn reserve_resource(&self, desc: &D3D12_RESOURCE_DESC, initial_state: D3D12_RESOURCE_STATES, clear_value: Option<&D3D12_CLEAR_VALUE>) -> IOResult<Resource> {
+        let mut h = std::ptr::null_mut();
+        unsafe {
+            (*self.0).CreateReservedResource(desc, initial_state, clear_value.map_or(std::ptr::null(), |p| p as _), &ID3D12Resource::uuidof(), &mut h)
+        }.to_result_with(|| Resource(h as _))
+    }
+}
 
 /// マッピングはんいを表す
 pub trait MappingRange : Sized { fn into_range_object(self) -> Option<Range>; }
