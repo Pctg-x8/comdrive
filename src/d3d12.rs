@@ -285,6 +285,7 @@ impl ResourceFlag
 pub struct ResourceDesc(D3D12_RESOURCE_DESC);
 unsafe impl MarkForSameBits<D3D12_RESOURCE_DESC> for ResourceDesc {}
 impl AsRef<D3D12_RESOURCE_DESC> for ResourceDesc { fn as_ref(&self) -> &D3D12_RESOURCE_DESC { &self.0 } }
+impl From<ResourceDesc> for D3D12_RESOURCE_DESC { fn from(v: ResourceDesc) -> Self { v.0 } }
 impl ResourceDesc
 {
     /// バッファ
@@ -330,10 +331,23 @@ pub enum ResourceState
     ResolveSource           = D3D12_RESOURCE_STATE_RESOLVE_SOURCE,
     GenericRead             = D3D12_RESOURCE_STATE_GENERIC_READ
 }
+#[derive(Clone)]
 /// クリア値
 pub enum OptimizedClearValue
 {
     Color(DXGI_FORMAT, f32, f32, f32, f32), DepthStencil(DXGI_FORMAT, f32, u8)
+}
+impl From<OptimizedClearValue> for D3D12_CLEAR_VALUE {
+    fn from(v: OptimizedClearValue) -> Self {
+        match v {
+            OptimizedClearValue::Color(fmt, r, g, b, a) => D3D12_CLEAR_VALUE { Format: fmt, u: unsafe { std::mem::transmute([r, g, b, a]) } },
+            OptimizedClearValue::DepthStencil(fmt, d, s) => {
+                let mut cv = D3D12_CLEAR_VALUE { Format: fmt, u: unsafe { std::mem::MaybeUninit::zeroed().assume_init() } };
+                unsafe { *cv.u.DepthStencil_mut() = D3D12_DEPTH_STENCIL_VALUE { Depth: d, Stencil: s }; }
+                cv
+            }
+        }
+    }
 }
 /// リソースハンドル
 #[repr(transparent)]
@@ -349,21 +363,20 @@ impl Device
     pub fn new_resource_committed(&self, heap_props: &HeapProperty, desc: &ResourceDesc, initial_state: ResourceState, clear_value: Option<&OptimizedClearValue>)
         -> IOResult<Resource>
     {
-        let opt_cv = clear_value.map(|cv| match *cv
-        {
-            OptimizedClearValue::Color(fmt, r, g, b, a) => D3D12_CLEAR_VALUE { Format: fmt, u: unsafe { std::mem::transmute([r, g, b, a]) } },
-            OptimizedClearValue::DepthStencil(fmt, d, s) =>
-            {
-                let mut cv = D3D12_CLEAR_VALUE { Format: fmt, u: unsafe { std::mem::zeroed() } };
-                unsafe { *cv.u.DepthStencil_mut() = D3D12_DEPTH_STENCIL_VALUE { Depth: d, Stencil: s }; } cv
-            }
-        });
+        let opt_cv = clear_value.map(|cv| cv.clone().into());
         let mut handle = std::ptr::null_mut();
         unsafe
         {
             (*self.0).CreateCommittedResource(heap_props.as_ref(), D3D12_HEAP_FLAG_NONE, desc.as_ref(), initial_state as _,
                 opt_cv.as_ref().map(|x| x as *const _).unwrap_or(std::ptr::null()), &ID3D12Resource::uuidof(), &mut handle)
         }.to_result_with(|| Resource(handle as _))
+    }
+    /// 予約済みリソースの作成
+    pub fn new_resource_reserved(&self, desc: &D3D12_RESOURCE_DESC, initial_state: D3D12_RESOURCE_STATES, clear_value: Option<&D3D12_CLEAR_VALUE>) -> IOResult<Resource> {
+        let mut h = std::ptr::null_mut();
+        unsafe {
+            (*self.0).CreateReservedResource(desc, initial_state, clear_value.map_or(std::ptr::null(), |p| p as _), &ID3D12Resource::uuidof(), &mut h)
+        }.to_result_with(|| Resource(h as _))
     }
 }
 impl Resource
@@ -464,15 +477,6 @@ impl Heap
         };
 
         self.place_resource(range.start, &desc, initial_state)
-    }
-}
-impl Device {
-    /// リソースを予約する
-    pub fn reserve_resource(&self, desc: &D3D12_RESOURCE_DESC, initial_state: D3D12_RESOURCE_STATES, clear_value: Option<&D3D12_CLEAR_VALUE>) -> IOResult<Resource> {
-        let mut h = std::ptr::null_mut();
-        unsafe {
-            (*self.0).CreateReservedResource(desc, initial_state, clear_value.map_or(std::ptr::null(), |p| p as _), &ID3D12Resource::uuidof(), &mut h)
-        }.to_result_with(|| Resource(h as _))
     }
 }
 
