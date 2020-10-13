@@ -326,6 +326,19 @@ pub trait Surface<'s>
     fn begin_draw(&'s self) -> IOResult<Self::RenderContext>;
 }
 
+/// Driver object for IUnknown surface for HWND Composition
+#[repr(transparent)]
+pub struct SurfaceHwnd(*mut IUnknown); HandleWrapper!(for SurfaceHwnd[IUnknown]);
+impl Device {
+    /// Create Composition surface from HWND
+    pub fn new_surface_from_hwnd(&self, hwnd: HWND) -> IOResult<SurfaceHwnd> {
+        let mut h = std::ptr::null_mut();
+        unsafe {
+            (*self.0).CreateSurfaceFromHwnd(hwnd, &mut h).to_result_with(|| SurfaceHwnd(h))
+        }
+    }
+}
+
 pub struct SurfaceRenderContext2<'s>(&'s Surface2, d2::DeviceContext, POINT);
 pub struct SurfaceRenderContext3<'s>(&'s Surface3, d3d11::Texture2D, POINT);
 impl<'s> Surface<'s> for Surface2 {
