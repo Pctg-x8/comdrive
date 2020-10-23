@@ -114,6 +114,27 @@ impl Device
         }
         (CopyableFootprintsIterator(layouts.into_iter().zip(row_counts.into_iter()).zip(row_sizes.into_iter())), total_bytes)
     }
+
+    /// 共有用Windowsハンドルの作成
+    pub fn create_shared_handle<R: AsRawHandle<ID3D12DeviceChild>>(
+        &self,
+        r: &R,
+        security_attributes: Option<&winapi::um::minwinbase::SECURITY_ATTRIBUTES>,
+        name: &widestring::WideCString
+    ) -> IOResult<HANDLE> {
+        let mut h = std::ptr::null_mut();
+        
+        unsafe {
+            (*self.0).CreateSharedHandle(
+                r.as_raw_handle(),
+                security_attributes.map_or_else(std::ptr::null, |p| p as *const _),
+                winapi::um::winnt::GENERIC_ALL,
+                name.as_ptr(),
+                &mut h
+            )
+            .to_result_with(move || h)
+        }
+    }
 }
 
 /// リソースのコピーに関する情報
@@ -407,6 +428,9 @@ impl Resource
     pub unsafe fn empty() -> Self { Resource(std::ptr::null_mut()) }
     /// 使用可能かどうかを返す
     pub fn is_available(&self) -> bool { !self.0.is_null() }
+}
+unsafe impl AsRawHandle<ID3D12DeviceChild> for Resource {
+    fn as_raw_handle(&self) -> *mut ID3D12DeviceChild { self.0 as _ }
 }
 
 /// ヒープのプロパティ
