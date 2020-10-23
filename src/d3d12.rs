@@ -200,6 +200,10 @@ impl CommandQueue
     {
         unsafe { (*self.0).Signal(fence.0, value).to_result(self) }
     }
+    // GPUでフェンスを待つように指示
+    pub fn wait(&self, fence: &Fence, value: u64) -> IOResult<&Self> {
+        unsafe { (*self.0).Wait(fence.0, value).to_result(self) }
+    }
 }
 /// コマンドアロケータ
 pub struct CommandAllocator(*mut ID3D12CommandAllocator, CommandType); HandleWrapper!(for CommandAllocator[ID3D12CommandAllocator]);
