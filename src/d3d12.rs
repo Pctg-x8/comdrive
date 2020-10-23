@@ -865,16 +865,22 @@ impl Blending
     }
 }
 
+pub use winapi::um::d3d12::{
+    D3D12_FENCE_FLAG_NONE as FENCE_FLAG_NONE,
+    D3D12_FENCE_FLAG_SHARED as FENCE_FLAG_SHARED,
+    D3D12_FENCE_FLAG_SHARED_CROSS_ADAPTER as FENCE_FLAG_SHARED_CROSS_ADAPTER
+};
+
 /// 同期オブジェクト(フェンス)
 #[repr(transparent)]
 pub struct Fence(*mut ID3D12Fence); HandleWrapper!(for Fence[ID3D12Fence] + FromRawHandle);
 impl Device
 {
     /// フェンスを作成
-    pub fn new_fence(&self, initial_value: u64) -> IOResult<Fence>
+    pub fn new_fence(&self, initial_value: u64, flags: winapi::um::d3d12::D3D12_FENCE_FLAGS) -> IOResult<Fence>
     {
         let mut handle = std::ptr::null_mut();
-        unsafe { (*self.0).CreateFence(initial_value, 0, &ID3D12Fence::uuidof(), &mut handle) }.to_result_with(|| Fence(handle as _))
+        unsafe { (*self.0).CreateFence(initial_value, flags, &ID3D12Fence::uuidof(), &mut handle) }.to_result_with(|| Fence(handle as _))
     }
 }
 impl Fence
