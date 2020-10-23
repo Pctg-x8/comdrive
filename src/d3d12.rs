@@ -885,6 +885,9 @@ impl Fence
     /// 現在の値を設定
     pub fn signal(&self, new_value: u64) -> IOResult<()> { unsafe { (*self.0).Signal(new_value) }.checked() }
 }
+unsafe impl AsRawHandle<ID3D12DeviceChild> for Fence {
+    fn as_raw_handle(&self) -> *mut ID3D12DeviceChild { self.0 as _ }
+}
 
 /// グラフィックス操作用のコマンドリスト
 #[repr(transparent)]
