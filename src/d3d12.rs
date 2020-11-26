@@ -325,14 +325,50 @@ impl ResourceDesc
         })
     }
     /// 平面テクスチャ
-    pub fn texture2d(size: &Size2U, format: dxgi::Format, usage: ResourceFlag) -> Self
+    pub fn texture2d(size: &Size2U, format: dxgi::Format) -> Self
     {
         ResourceDesc(D3D12_RESOURCE_DESC
         {
             Dimension: D3D12_RESOURCE_DIMENSION_TEXTURE2D, Alignment: D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT as _,
             Width: size.width() as _, Height: size.height() as _, DepthOrArraySize: 1, MipLevels: 1, Format: format,
-            SampleDesc: DXGI_SAMPLE_DESC { Count: 1, Quality: 0 }, Layout: D3D12_TEXTURE_LAYOUT_UNKNOWN, Flags: usage.0
+            SampleDesc: DXGI_SAMPLE_DESC { Count: 1, Quality: 0 }, Layout: D3D12_TEXTURE_LAYOUT_UNKNOWN, Flags: 0
         })
+    }
+
+    /// テクスチャレイアウト指定(Layout)
+    pub fn layout(mut self, layout: D3D12_TEXTURE_LAYOUT) -> Self {
+        self.0.Layout = layout;
+        self
+    }
+    /// リソースフラグ指定(Flags)
+    pub fn flags(mut self, flags: ResourceFlag) -> Self {
+        self.0.Flags = flags.0;
+        self
+    }
+    /// サンプリング指定(SampleDesc)
+    pub fn sample_desc(mut self, desc: DXGI_SAMPLE_DESC) -> Self {
+        self.0.SampleDesc = desc;
+        self
+    }
+    /// 深度指定(DepthOrArraySize)
+    pub fn depth(mut self, depth: u16) -> Self {
+        self.0.DepthOrArraySize = depth;
+        self
+    }
+    /// 配列要素数指定(DepthOrArraySize)
+    pub fn array_size(mut self, size: u16) -> Self {
+        self.0.DepthOrArraySize = size;
+        self
+    }
+    /// ミップマップレベル指定(MipLevels)
+    pub fn mip_levels(mut self, levels: u16) -> Self {
+        self.0.MipLevels = levels;
+        self
+    }
+    /// アラインメント指定(Alignment)
+    pub fn alignment(mut self, align: u64) -> Self {
+        self.0.Alignment = align;
+        self
     }
 }
 /// リソースの状態
