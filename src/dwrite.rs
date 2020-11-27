@@ -14,7 +14,7 @@ use std::slice;
 
 pub use winapi::um::dwrite::{
     DWRITE_TEXT_METRICS as TextMetrics, DWRITE_FONT_METRICS as FontMetrics, DWRITE_LINE_METRICS as LineMetrics,
-    DWRITE_OVERHANG_METRICS as OverhangMetrics
+    DWRITE_OVERHANG_METRICS as OverhangMetrics, DWRITE_GLYPH_METRICS as GlyphMetrics
 };
 #[repr(C)] #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub enum FontStyle
@@ -287,7 +287,7 @@ impl FontFace
     }
 
     /// グリフ単位のメトリックを取得
-    pub fn design_glyph_metrics(&self, glyphs: &[u16], is_sideways: bool) -> IOResult<Vec<DWRITE_GLYPH_METRICS>>
+    pub fn design_glyph_metrics(&self, glyphs: &[u16], is_sideways: bool) -> IOResult<Vec<GlyphMetrics>>
     {
         let mut sink = Vec::with_capacity(glyphs.len());
         unsafe { sink.set_len(glyphs.len()); }
