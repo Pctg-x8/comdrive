@@ -20,5 +20,5 @@ features = [
     "dxgi", "d3d12", "d3d11", "d2d1", "d2d1_1", "dcomp", "d3d11on12", "d3dcompiler", "d3dcommon",
     "wincodec", "dcompanimation", "objbase", "minwinbase", "d3d12sdklayers",
     "dwrite", "dwmapi", "winuser", "winbase", "dwrite_1", "dxgi1_3", "dxgi1_4", "dxgitype", "dxgiformat",
-    "winnt", "ntdef", "dcomptypes", "windef", "minwindef"
+    "winnt", "ntdef", "dcomptypes", "windef", "minwindef", "d2d1effects", "dcommon", "unknwnbase", "winerror"
 ]

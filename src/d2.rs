@@ -425,6 +425,9 @@ impl PathGeometry
         unsafe { (*self.0).Open(&mut h).to_result_with(|| GeometrySink(h)) }
     }
 }
+unsafe impl AsRawHandle<ID2D1SimplifiedGeometrySink> for GeometrySink {
+    fn as_raw_handle(&self) -> *mut ID2D1SimplifiedGeometrySink { self.0 as _ }
+}
 
 /// Geometry Segment
 pub trait GeometrySegment

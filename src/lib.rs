@@ -3,7 +3,8 @@
 use univstring::*;
 use std::io::{Result as IOResult, Error as IOError};
 use winapi::shared::windef::HWND;
-use winapi::shared::winerror::{HRESULT, SUCCEEDED};
+use winapi::shared::ntdef::HRESULT;
+use winapi::shared::winerror::SUCCEEDED;
 use winapi::um::unknwnbase::IUnknown;
 use winapi::Interface;
 use winapi::um::unknwnbase::LPUNKNOWN;
