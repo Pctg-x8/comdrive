@@ -186,9 +186,9 @@ impl TextLayout
         }
     }
     /// Drawing the layout by calling back to the renderer object.
-    pub unsafe fn draw(&self, callback: *mut IDWriteTextRenderer, context: *mut c_void, origin: &Point2F) -> IOResult<()>
+    pub unsafe fn draw<R: AsRawHandle<IDWriteTextRenderer>>(&self, callback: &R, context: *mut c_void, origin: &Point2F) -> IOResult<()>
     {
-        (*self.0).Draw(context, callback, origin.x(), origin.y()).checked()
+        (*self.0).Draw(context, callback.as_raw_handle(), origin.x(), origin.y()).checked()
     }
     /// Set underline for character range
     pub fn set_underline(&self, has_underline: bool, range: std::ops::Range<u32>) -> IOResult<()> {
