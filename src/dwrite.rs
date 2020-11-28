@@ -16,11 +16,6 @@ pub use winapi::um::dwrite::{
     DWRITE_TEXT_METRICS as TextMetrics, DWRITE_FONT_METRICS as FontMetrics, DWRITE_LINE_METRICS as LineMetrics,
     DWRITE_OVERHANG_METRICS as OverhangMetrics, DWRITE_GLYPH_METRICS as GlyphMetrics
 };
-#[repr(C)] #[derive(Debug, Clone, PartialEq, Eq, Copy)]
-pub enum FontStyle
-{
-    None = DWRITE_FONT_STYLE_NORMAL as _, Oblique = DWRITE_FONT_STYLE_OBLIQUE as _, Italic = DWRITE_FONT_STYLE_ITALIC as _
-}
 pub use winapi::um::dwrite::{
     DWRITE_FONT_WEIGHT as FontWeight,
     DWRITE_FONT_WEIGHT_THIN as FONT_WEIGHT_THIN, DWRITE_FONT_WEIGHT_EXTRA_LIGHT as FONT_WEIGHT_EXTRA_LIGHT,
@@ -43,6 +38,12 @@ pub use winapi::um::dwrite::{
     DWRITE_FONT_STRETCH_EXPANDED as FONT_STRETCH_EXPANDED,
     DWRITE_FONT_STRETCH_EXTRA_EXPANDED as FONT_STRETCH_EXTRA_EXPANDED,
     DWRITE_FONT_STRETCH_ULTRA_EXPANDED as FONT_STRETCH_ULTRA_EXPANDED
+};
+pub use winapi::um::dwrite::{
+    DWRITE_FONT_STYLE as FontStyle,
+    DWRITE_FONT_STYLE_NORMAL as FONT_STYLE_NORMAL,
+    DWRITE_FONT_STYLE_OBLIQUE as FONT_STYLE_OBLIQUE,
+    DWRITE_FONT_STYLE_ITALIC as FONT_STYLE_ITALIC
 };
 
 /// Driver class for IDWriteFactory
@@ -67,7 +68,7 @@ impl Default for FontOptions
 {
     fn default() -> Self
     {
-        FontOptions { weight: DWRITE_FONT_WEIGHT_NORMAL, style: FontStyle::None, stretch: DWRITE_FONT_STRETCH_NORMAL }
+        FontOptions { weight: FONT_WEIGHT_NORMAL, style: FONT_STYLE_NORMAL, stretch: FONT_STRETCH_NORMAL }
     }
 }
 
@@ -102,6 +103,16 @@ impl TextFormat {
             (*self.0).GetFontFamilyName(family_name.as_mut_ptr(), family_name.len() as _)
                 .to_result_with(|| widestring::WideCString::from_vec_with_nul_unchecked(family_name))
         }
+    }
+
+    pub fn weight(&self) -> FontWeight {
+        unsafe { (*self.0).GetFontWeight() }
+    }
+    pub fn stretch(&self) -> FontStretch {
+        unsafe { (*self.0).GetFontStretch() }
+    }
+    pub fn style(&self) -> FontStyle {
+        unsafe { (*self.0).GetFontStyle() }
     }
 }
 
