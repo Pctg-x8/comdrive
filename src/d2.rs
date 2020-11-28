@@ -414,6 +414,14 @@ impl Factory
         unsafe { (*self.0).CreatePathGeometry(&mut h).to_result_with(|| PathGeometry(h)) }
     }
 }
+impl Shape for PathGeometry {
+    fn draw<B: Brush + ?Sized>(&self, p_rt: &mut ID2D1RenderTarget, brush: &B, line_width: f32) {
+        unsafe { p_rt.DrawGeometry(self.0 as _, brush.as_raw_brush(), line_width, std::ptr::null_mut()); }
+    }
+    fn fill<B: Brush + ?Sized>(&self, p_rt: &mut ID2D1RenderTarget, brush: &B) {
+        unsafe { p_rt.FillGeometry(self.0 as _, brush.as_raw_brush(), std::ptr::null_mut()); }
+    }
+}
 /// Driver class for ID2D1GeometrySink
 #[repr(transparent)]
 pub struct GeometrySink(*mut ID2D1GeometrySink); HandleWrapper!(for GeometrySink[ID2D1GeometrySink] + FromRawHandle);
