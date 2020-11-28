@@ -90,6 +90,20 @@ impl Factory
         }
     }
 }
+impl TextFormat {
+    pub fn font_collection(&self) -> IOResult<FontCollection> {
+        let mut handle = std::ptr::null_mut();
+        unsafe { (*self.0).GetFontCollection(&mut handle).to_result_with(|| FontCollection(handle)) }
+    }
+    pub fn font_family_name(&self) -> IOResult<widestring::WideCString> {
+        let length = unsafe { (*self.0).GetFontFamilyNameLength() };
+        let mut family_name = vec![0; 1 + length as usize];
+        unsafe {
+            (*self.0).GetFontFamilyName(family_name.as_mut_ptr(), family_name.len() as _)
+                .to_result_with(|| widestring::WideCString::from_vec_with_nul_unchecked(family_name))
+        }
+    }
+}
 
 /// Driver object for IDWriteTextLayout1
 #[repr(transparent)]
