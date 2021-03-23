@@ -14,7 +14,8 @@ use std::slice;
 
 pub use winapi::um::dwrite::{
     DWRITE_TEXT_METRICS as TextMetrics, DWRITE_FONT_METRICS as FontMetrics, DWRITE_LINE_METRICS as LineMetrics,
-    DWRITE_OVERHANG_METRICS as OverhangMetrics, DWRITE_GLYPH_METRICS as GlyphMetrics
+    DWRITE_OVERHANG_METRICS as OverhangMetrics, DWRITE_GLYPH_METRICS as GlyphMetrics,
+    DWRITE_FONT_FACE_TYPE as FontFaceType, DWRITE_FONT_SIMULATIONS as FontSimulations
 };
 pub use winapi::um::dwrite::{
     DWRITE_FONT_WEIGHT as FontWeight,
@@ -264,6 +265,22 @@ impl Font
     {
         let mut handle = std::ptr::null_mut();
         unsafe { (*self.0).CreateFontFace(&mut handle).to_result_with(|| FontFace(handle)) }
+    }
+}
+impl Factory {
+    pub fn new_font_face(
+        &self,
+        face_type: FontFaceType,
+        files: &[*mut IDWriteFontFile],
+        face_index: u32,
+        simulation_flags: FontSimulations
+    ) -> IOResult<FontFace> {
+        let mut handle = std::ptr::null_mut();
+        unsafe {
+            (*self.0).CreateFontFace(
+                face_type, files.len() as _, files.as_ptr(), face_index, simulation_flags, &mut handle
+            ).to_result_with(|| FontFace(handle))
+        }
     }
 }
 impl FontFace
