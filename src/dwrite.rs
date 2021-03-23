@@ -65,6 +65,13 @@ impl Factory
         let mut handle = std::ptr::null_mut();
         unsafe { DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, &IDWriteFactory::uuidof(), &mut handle).to_result_with(|| Factory(handle as _)) }
     }
+
+    pub fn register_font_file_loader<Loader: AsRawHandle<IDWriteFontFileLoader>>(&self, loader: &Loader) -> IOResult<()> {
+        unsafe { (*self.0).RegisterFontFileLoader(loader.as_raw_handle()).to_result(()) }
+    }
+    pub fn unregister_font_file_loader<Loader: AsRawHandle<IDWriteFontFileLoader>>(&self, loader: &Loader) -> IOResult<()> {
+        unsafe { (*self.0).UnregisterFontFileLoader(loader.as_raw_handle()).to_result(()) }
+    }
 }
 
 pub struct FontOptions
