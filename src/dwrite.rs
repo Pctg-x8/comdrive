@@ -15,8 +15,7 @@ use std::slice;
 pub use winapi::um::dwrite::{
     DWRITE_TEXT_METRICS as TextMetrics, DWRITE_FONT_METRICS as FontMetrics, DWRITE_LINE_METRICS as LineMetrics,
     DWRITE_OVERHANG_METRICS as OverhangMetrics, DWRITE_GLYPH_METRICS as GlyphMetrics,
-    DWRITE_FONT_FACE_TYPE as FontFaceType, DWRITE_FONT_FILE_TYPE as FontFileType,
-    DWRITE_FONT_SIMULATIONS as FontSimulations
+    DWRITE_FONT_FACE_TYPE as FontFaceType, DWRITE_FONT_FILE_TYPE as FontFileType
 };
 pub use winapi::um::dwrite::{
     DWRITE_FONT_WEIGHT as FontWeight,
@@ -46,6 +45,12 @@ pub use winapi::um::dwrite::{
     DWRITE_FONT_STYLE_NORMAL as FONT_STYLE_NORMAL,
     DWRITE_FONT_STYLE_OBLIQUE as FONT_STYLE_OBLIQUE,
     DWRITE_FONT_STYLE_ITALIC as FONT_STYLE_ITALIC
+};
+pub use winapi::um::dwrite::{
+    DWRITE_FONT_SIMULATIONS as FontSimulations,
+    DWRITE_FONT_SIMULATIONS_NONE as FONT_SIMULATIONS_NONE,
+    DWRITE_FONT_SIMULATIONS_BOLD as FONT_SIMULATIONS_BOLD,
+    DWRITE_FONT_SIMULATIONS_OBLIQUE as FONT_SIMULATIONS_OBLIQUE
 };
 
 /// Driver class for IDWriteFactory
