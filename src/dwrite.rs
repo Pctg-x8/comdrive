@@ -15,7 +15,8 @@ use std::slice;
 pub use winapi::um::dwrite::{
     DWRITE_TEXT_METRICS as TextMetrics, DWRITE_FONT_METRICS as FontMetrics, DWRITE_LINE_METRICS as LineMetrics,
     DWRITE_OVERHANG_METRICS as OverhangMetrics, DWRITE_GLYPH_METRICS as GlyphMetrics,
-    DWRITE_FONT_FACE_TYPE as FontFaceType, DWRITE_FONT_SIMULATIONS as FontSimulations
+    DWRITE_FONT_FACE_TYPE as FontFaceType, DWRITE_FONT_FILE_TYPE as FontFileType,
+    DWRITE_FONT_SIMULATIONS as FontSimulations
 };
 pub use winapi::um::dwrite::{
     DWRITE_FONT_WEIGHT as FontWeight,
@@ -414,6 +415,16 @@ impl FontFile
         {
             (*self.0).GetReferenceKey(&mut ptr as *mut _ as *mut *const _, &mut size)
                 .to_result_with(|| slice::from_raw_parts(ptr, size as _))
+        }
+    }
+
+    /// (isSupportedFontType, fontFileType, fontFaceType, numberOfFaces)
+    pub fn analyze(&self) -> IOResult<(bool, FontFileType, FontFaceType, u32)> {
+        let (mut is_supported, mut file_type, mut face_type, mut face_count) = (0, 0, 0, 0);
+
+        unsafe {
+            (*self.0).Analyze(&mut is_supported, &mut file_type, &mut face_type, &mut face_count)
+                .to_result_with(|| (is_supported != 0, file_type, face_type, face_count))
         }
     }
 }
