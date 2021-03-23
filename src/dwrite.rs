@@ -376,6 +376,16 @@ impl Factory
                 .to_result_with(|| FontFile(handle))
         }
     }
+    pub fn new_custom_font_file_reference<Loader: AsRawHandle<IDWriteFontFileLoader>, T>(
+        &self, reference_key: &T, loader: &Loader
+    ) -> IOResult<FontFile> {
+        let mut handle = null_mut();
+        unsafe {
+            (*self.0).CreateCustomFontFileReference(
+                reference_key as *const T as _, std::mem::size_of::<T>() as _, loader.as_raw_handle(), &mut handle
+            ).to_result_with(|| FontFile(handle))
+        }
+    }
 }
 impl FontFile
 {
